@@ -77,9 +77,17 @@ Create a `.env` file next to `compose.yml`:
 ```env
 DISCORD_BOT_TOKEN=your_discord_bot_token
 LAVALINK_PASSWORD=youshallnotpass
+YOUTUBE_REFRESH_TOKEN=
 SYNC_GLOBAL_COMMANDS=false
 CLEAR_GLOBAL_COMMANDS=false
 ```
+
+The default compose stack starts two Lavalink nodes:
+
+- `lavalink`: normal logged-out playback.
+- `lavalink-premium`: OAuth-enabled YouTube playback for future premium fallback support.
+
+The bot does not use the premium node yet unless the Go code is updated to select it. Leave `YOUTUBE_REFRESH_TOKEN` empty until you intentionally test OAuth.
 
 ## First Run
 
@@ -94,6 +102,7 @@ View logs:
 ```bash
 docker logs -f rappa-bot
 docker logs -f rappa-lavalink
+docker logs -f rappa-lavalink-premium
 ```
 
 ## Subsequent Runs
