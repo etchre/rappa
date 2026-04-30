@@ -2,7 +2,10 @@
 .env
 
 # Local Lavalink Docker setup
-lavalink/
+/lavalink/
+
+# Lavalink plugin jars are downloaded at runtime
+/deploy/lavalink/plugins/*.jar
 
 # Downloaded media/runtime output
 downloads/
