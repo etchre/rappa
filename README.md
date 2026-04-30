@@ -7,7 +7,7 @@ A Discord music bot written in Go. It uses DisGo for Discord interactions and La
 
 ## Setup
 
-This project is intended to run with Docker Compose using [compose.example.yml](compose.example.yml).
+This project is intended to run with Docker Compose using [compose.yml](compose.yml).
 
 ## Discord Bot Setup
 
@@ -72,7 +72,7 @@ CLEAR_GLOBAL_COMMANDS=true
 
 Only use that intentionally. After stale commands are cleared, set it back to `false`.
 
-Create a `.env` file next to `compose.example.yml`:
+Create a `.env` file next to `compose.yml`:
 
 ```env
 DISCORD_BOT_TOKEN=your_discord_bot_token
@@ -86,7 +86,7 @@ CLEAR_GLOBAL_COMMANDS=false
 Build and start the bot plus Lavalink:
 
 ```bash
-docker compose -f compose.example.yml up -d --build
+docker compose up -d --build
 ```
 
 View logs:
@@ -101,19 +101,19 @@ docker logs -f rappa-lavalink
 Start the existing containers:
 
 ```bash
-docker compose -f compose.example.yml up -d
+docker compose up -d
 ```
 
 Stop the containers:
 
 ```bash
-docker compose -f compose.example.yml down
+docker compose down
 ```
 
 Rebuild after code changes:
 
 ```bash
-docker compose -f compose.example.yml up -d --build
+docker compose up -d --build
 ```
 
 ## License

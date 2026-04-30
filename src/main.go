@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+
+	"ytdlpPlayer/bot"
 )
 
 func main() {
@@ -13,7 +15,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "warning: .env file not loaded")
 	}
 
-	if err := runBot(); err != nil {
+	if err := bot.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "bot failed: %v\n", err)
 		os.Exit(1)
 	}

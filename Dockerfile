@@ -1,11 +1,11 @@
 FROM golang:1.26-alpine AS build
 
-WORKDIR /src
+WORKDIR /build
 
-COPY go.mod go.sum ./
+COPY src/go.mod src/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY src/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/rappa .
 
 FROM alpine:3.22

@@ -24,7 +24,7 @@ services:
     environment:
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
     volumes:
-      - ./deploy/lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
     expose:
       - "2333"
     # Uncomment this if you want to inspect Lavalink from another machine.
