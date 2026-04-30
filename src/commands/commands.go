@@ -22,6 +22,7 @@ var All = map[string]commandrouter.Command{
 	"restart":      Restart,
 	"skip":         Skip,
 	"stop":         Stop,
+	"mae":          Mae,
 }
 
 func HandleComponent(ctx commandrouter.Context, event *events.ComponentInteractionCreate) {
