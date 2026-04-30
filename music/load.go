@@ -11,53 +11,68 @@ import (
 )
 
 const youtubeSearchPrefix = "ytsearch:"
+const (
+	collectionKindAlbum    = "album"
+	collectionKindPlaylist = "playlist"
+)
 
-func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier string) ([]lavalink.Track, error) {
+type playableLoad struct {
+	Tracks         []lavalink.Track
+	CollectionName string
+	CollectionKind string
+}
+
+func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier string) (playableLoad, error) {
+	originalIdentifier := identifier
 	identifier = playableIdentifier(identifier)
 	result, err := node.LoadTracks(ctx, identifier)
 	if err != nil {
-		return nil, fmt.Errorf("load tracks: %w", err)
+		return playableLoad{}, fmt.Errorf("load tracks: %w", err)
 	}
 
 	switch result.LoadType {
 	case lavalink.LoadTypeTrack:
 		track, ok := result.Data.(lavalink.Track)
 		if !ok {
-			return nil, fmt.Errorf("unexpected track load result data: %T", result.Data)
+			return playableLoad{}, fmt.Errorf("unexpected track load result data: %T", result.Data)
 		}
-		return []lavalink.Track{track}, nil
+		return playableLoad{Tracks: []lavalink.Track{track}}, nil
 
 	case lavalink.LoadTypeSearch:
 		tracks, ok := result.Data.(lavalink.Search)
 		if !ok {
-			return nil, fmt.Errorf("unexpected search load result data: %T", result.Data)
+			return playableLoad{}, fmt.Errorf("unexpected search load result data: %T", result.Data)
 		}
 		if len(tracks) == 0 {
-			return nil, fmt.Errorf("search returned no tracks")
+			return playableLoad{}, fmt.Errorf("search returned no tracks")
 		}
-		return selectSearchResult(tracks), nil
+		return playableLoad{Tracks: selectSearchResult(tracks)}, nil
 
 	case lavalink.LoadTypePlaylist:
 		playlist, ok := result.Data.(lavalink.Playlist)
 		if !ok {
-			return nil, fmt.Errorf("unexpected playlist load result data: %T", result.Data)
+			return playableLoad{}, fmt.Errorf("unexpected playlist load result data: %T", result.Data)
 		}
 		if len(playlist.Tracks) == 0 {
-			return nil, fmt.Errorf("playlist returned no tracks")
+			return playableLoad{}, fmt.Errorf("playlist returned no tracks")
 		}
-		return playlist.Tracks, nil
+		return playableLoad{
+			Tracks:         playlist.Tracks,
+			CollectionName: playlist.Info.Name,
+			CollectionKind: collectionKind(originalIdentifier),
+		}, nil
 
 	case lavalink.LoadTypeEmpty:
-		return nil, fmt.Errorf("no tracks found for %q", identifier)
+		return playableLoad{}, fmt.Errorf("no tracks found for %q", identifier)
 
 	case lavalink.LoadTypeError:
 		if loadErr, ok := result.Data.(lavalink.Exception); ok {
-			return nil, fmt.Errorf("lavalink load error: %w", loadErr)
+			return playableLoad{}, fmt.Errorf("lavalink load error: %w", loadErr)
 		}
-		return nil, fmt.Errorf("lavalink returned an unknown load error")
+		return playableLoad{}, fmt.Errorf("lavalink returned an unknown load error")
 
 	default:
-		return nil, fmt.Errorf("unsupported lavalink load type %q", result.LoadType)
+		return playableLoad{}, fmt.Errorf("unsupported lavalink load type %q", result.LoadType)
 	}
 }
 
@@ -84,4 +99,12 @@ func hasSearchPrefix(input string) bool {
 
 func selectSearchResult(tracks lavalink.Search) []lavalink.Track {
 	return []lavalink.Track{tracks[0]}
+}
+
+func collectionKind(identifier string) string {
+	if strings.Contains(identifier, "OLAK5uy") {
+		return collectionKindAlbum
+	}
+
+	return collectionKindPlaylist
 }

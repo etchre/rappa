@@ -49,6 +49,8 @@ func runBot() error {
 		return fmt.Errorf("sync global commands: %w", err)
 	}
 
+	app.warmDiscordRest()
+
 	if err := app.discord.OpenGateway(ctx); err != nil {
 		return fmt.Errorf("open discord gateway: %w", err)
 	}
@@ -81,6 +83,7 @@ func newBotApp(ctx context.Context, cfg botConfig) (*botApp, error) {
 		bot.WithEventListenerFunc(app.onVoiceStateUpdate(ctx)),
 		bot.WithEventListenerFunc(app.onVoiceServerUpdate(ctx)),
 		bot.WithEventListenerFunc(app.onApplicationCommand(ctx)),
+		bot.WithEventListenerFunc(app.onComponentInteraction(ctx)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create discord client: %w", err)
@@ -120,6 +123,12 @@ func (app *botApp) registerCommands() error {
 	return err
 }
 
+func (app *botApp) warmDiscordRest() {
+	if _, err := app.discord.Rest.GetGatewayBot(); err != nil {
+		fmt.Fprintf(os.Stderr, "discord rest warmup failed: %v\n", err)
+	}
+}
+
 func (app *botApp) close(ctx context.Context) {
 	if app.discord != nil {
 		app.discord.Close(ctx)
@@ -152,7 +161,24 @@ func (app *botApp) onVoiceServerUpdate(ctx context.Context) func(event *events.V
 
 func (app *botApp) onApplicationCommand(ctx context.Context) func(event *events.ApplicationCommandInteractionCreate) {
 	return func(event *events.ApplicationCommandInteractionCreate) {
-		app.router.Handle(ctx, event)
+		go app.router.Handle(ctx, event)
+	}
+}
+
+func (app *botApp) onComponentInteraction(ctx context.Context) func(event *events.ComponentInteractionCreate) {
+	return func(event *events.ComponentInteractionCreate) {
+		go func() {
+			guildID := event.GuildID()
+			if guildID == nil {
+				return
+			}
+
+			commands.HandleComponent(commandrouter.Context{
+				Context: ctx,
+				GuildID: *guildID,
+				Player:  app.player,
+			}, event)
+		}()
 	}
 }
 

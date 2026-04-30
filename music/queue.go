@@ -64,14 +64,22 @@ func (p *Player) Queue(guildID snowflake.ID) QueueSnapshot {
 	copy(queued, playback.queue)
 
 	var current *lavalink.Track
+	var position lavalink.Duration
+	var volume int
 	if playback.current != nil {
 		currentTrack := *playback.current
 		current = &currentTrack
+
+		player := p.lavalink.Player(guildID)
+		position = player.Position()
+		volume = player.Volume()
 	}
 
 	return QueueSnapshot{
-		Current: current,
-		Queued:  queued,
+		Current:  current,
+		Queued:   queued,
+		Position: position,
+		Volume:   volume,
 	}
 }
 

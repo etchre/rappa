@@ -8,6 +8,7 @@ var All = map[string]commandrouter.Command{
 	"leave":        Leave,
 	"loop":         Loop,
 	"movenext":     MoveNext,
+	"nowplaying":   NowPlaying,
 	"play":         Play,
 	"playnext":     PlayNext,
 	"playrightnow": PlayRightNow,

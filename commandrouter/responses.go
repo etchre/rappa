@@ -23,3 +23,17 @@ func UpdateResponse(event *events.ApplicationCommandInteractionCreate, message s
 		fmt.Fprintf(os.Stderr, "update command response failed: %v\n", err)
 	}
 }
+
+func UpdateResponseEmbed(event *events.ApplicationCommandInteractionCreate, embed discord.Embed) {
+	UpdateResponseContentEmbed(event, "", embed)
+}
+
+func UpdateResponseContentEmbed(event *events.ApplicationCommandInteractionCreate, content string, embed discord.Embed) {
+	if _, err := event.Client().Rest.UpdateInteractionResponse(
+		event.ApplicationID(),
+		event.Token(),
+		discord.NewMessageUpdate().WithContent(content).WithEmbeds(embed),
+	); err != nil {
+		fmt.Fprintf(os.Stderr, "update command embed response failed: %v\n", err)
+	}
+}

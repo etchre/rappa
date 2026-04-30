@@ -1,0 +1,33 @@
+name: rappa
+
+services:
+  bot:
+    build:
+      context: .
+    container_name: rappa-bot
+    restart: unless-stopped
+    environment:
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      LAVALINK_NODE_NAME: local
+      LAVALINK_ADDRESS: lavalink:2333
+      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
+      LAVALINK_SECURE: "false"
+      SYNC_GLOBAL_COMMANDS: ${SYNC_GLOBAL_COMMANDS:-false}
+      CLEAR_GLOBAL_COMMANDS: ${CLEAR_GLOBAL_COMMANDS:-false}
+    depends_on:
+      - lavalink
+
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4-alpine
+    container_name: rappa-lavalink
+    restart: unless-stopped
+    environment:
+      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
+    volumes:
+      - ./deploy/lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./deploy/lavalink/plugins:/opt/Lavalink/plugins
+    expose:
+      - "2333"
+    # Uncomment this if you want to inspect Lavalink from another machine.
+    # ports:
+    #   - "2333:2333"

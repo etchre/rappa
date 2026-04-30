@@ -31,8 +31,20 @@ func handleQueue(ctx commandrouter.Context, event *events.ApplicationCommandInte
 		commandrouter.RespondError(event, "The queue is empty.")
 		return
 	}
+	if snapshot.Current == nil {
+		if err := event.CreateMessage(discord.NewMessageCreate().WithContent(formatQueue(nil, snapshot.Queued))); err != nil {
+			fmt.Fprintf(os.Stderr, "queue response failed: %v\n", err)
+		}
+		return
+	}
 
-	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(formatQueue(snapshot.Current, snapshot.Queued))); err != nil {
+	components := queuePageComponents(0, len(snapshot.Queued))
+	message := discord.NewMessageCreate().WithEmbeds(queueEmbed(*snapshot.Current, snapshot.Queued, 0))
+	if len(components) > 0 {
+		message = message.WithComponents(components...)
+	}
+
+	if err := event.CreateMessage(message); err != nil {
 		fmt.Fprintf(os.Stderr, "queue response failed: %v\n", err)
 	}
 }

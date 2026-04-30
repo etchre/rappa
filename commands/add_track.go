@@ -72,12 +72,14 @@ func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 
 	title := trackTitle(result.Track)
 	if result.Queued {
-		if result.Added > 1 {
-			commandrouter.UpdateResponse(event, fmt.Sprintf("Queued %d tracks starting at #%d: %s", result.Added, result.Position, title))
-			return
-		}
+		content, embed := queuedEmbed(result, event.User().Mention())
+		commandrouter.UpdateResponseContentEmbed(event, content, embed)
+		return
+	}
 
-		commandrouter.UpdateResponse(event, fmt.Sprintf("Queued #%d: %s", result.Position, title))
+	snapshot := ctx.Player.Queue(ctx.GuildID)
+	if snapshot.Current != nil {
+		commandrouter.UpdateResponseEmbed(event, nowPlayingEmbed(*snapshot.Current, snapshot.Queued, snapshot.Position, snapshot.Volume, event.User().Mention()))
 		return
 	}
 

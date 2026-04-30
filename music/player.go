@@ -23,15 +23,20 @@ type guildPlayback struct {
 }
 
 type QueueResult struct {
-	Track    lavalink.Track
-	Queued   bool
-	Position int
-	Added    int
+	Track          lavalink.Track
+	Tracks         []lavalink.Track
+	Queued         bool
+	Position       int
+	Added          int
+	CollectionName string
+	CollectionKind string
 }
 
 type QueueSnapshot struct {
-	Current *lavalink.Track
-	Queued  []lavalink.Track
+	Current  *lavalink.Track
+	Queued   []lavalink.Track
+	Position lavalink.Duration
+	Volume   int
 }
 
 type SkipResult struct {

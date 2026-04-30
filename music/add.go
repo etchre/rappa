@@ -21,10 +21,11 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		return QueueResult{}, fmt.Errorf("no lavalink node is available")
 	}
 
-	tracks, err := loadPlayableTracks(ctx, node, identifier)
+	loaded, err := loadPlayableTracks(ctx, node, identifier)
 	if err != nil {
 		return QueueResult{}, err
 	}
+	tracks := loaded.Tracks
 	track := tracks[0]
 
 	p.mu.Lock()
@@ -51,7 +52,13 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		return QueueResult{}, err
 	}
 
-	return QueueResult{Track: track, Added: len(tracks)}, nil
+	return QueueResult{
+		Track:          track,
+		Tracks:         tracks,
+		Added:          len(tracks),
+		CollectionName: loaded.CollectionName,
+		CollectionKind: loaded.CollectionKind,
+	}, nil
 }
 
 func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier string, next bool) (QueueResult, error) {
@@ -60,10 +67,11 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		return QueueResult{}, fmt.Errorf("no lavalink node is available")
 	}
 
-	tracks, err := loadPlayableTracks(ctx, node, identifier)
+	loaded, err := loadPlayableTracks(ctx, node, identifier)
 	if err != nil {
 		return QueueResult{}, err
 	}
+	tracks := loaded.Tracks
 	track := tracks[0]
 
 	p.mu.Lock()
@@ -83,10 +91,13 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		p.mu.Unlock()
 
 		return QueueResult{
-			Track:    track,
-			Queued:   true,
-			Position: position,
-			Added:    len(tracks),
+			Track:          track,
+			Tracks:         tracks,
+			Queued:         true,
+			Position:       position,
+			Added:          len(tracks),
+			CollectionName: loaded.CollectionName,
+			CollectionKind: loaded.CollectionKind,
 		}, nil
 	}
 	previousQueue := playback.queue
@@ -106,5 +117,11 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		return QueueResult{}, err
 	}
 
-	return QueueResult{Track: track, Added: len(tracks)}, nil
+	return QueueResult{
+		Track:          track,
+		Tracks:         tracks,
+		Added:          len(tracks),
+		CollectionName: loaded.CollectionName,
+		CollectionKind: loaded.CollectionKind,
+	}, nil
 }

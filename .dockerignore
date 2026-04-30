@@ -1,0 +1,9 @@
+.git/
+.env
+lavalink/
+downloads/
+bin/
+ytdlpPlayer
+*.test
+*.code-workspace
+.DS_Store
