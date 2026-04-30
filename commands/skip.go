@@ -8,6 +8,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var Skip = commandrouter.Command{
@@ -33,14 +34,14 @@ func handleSkip(ctx commandrouter.Context, event *events.ApplicationCommandInter
 	if result.Next != nil {
 		snapshot := ctx.Player.Queue(ctx.GuildID)
 		if snapshot.Current != nil {
-			embed := nowPlayingEmbed(*snapshot.Current, nil, snapshot.Position, snapshot.Volume, "")
+			embed := helpers.NowPlayingEmbed(*snapshot.Current, nil, snapshot.Position, snapshot.Volume, "")
 			if err := event.CreateMessage(discord.NewMessageCreate().WithContent("Skipped!").WithEmbeds(embed)); err != nil {
 				fmt.Fprintf(os.Stderr, "skip response failed: %v\n", err)
 			}
 			return
 		}
 
-		commandrouter.RespondError(event, fmt.Sprintf("Skipped. Now playing: %s", trackTitle(*result.Next)))
+		commandrouter.RespondError(event, fmt.Sprintf("Skipped. Now playing: %s", helpers.TrackTitle(*result.Next)))
 		return
 	}
 	if !result.Stopped {

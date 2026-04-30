@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var Restart = commandrouter.Command{
@@ -29,5 +30,5 @@ func handleRestart(ctx commandrouter.Context, event *events.ApplicationCommandIn
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Restarted: %s", trackTitle(track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Restarted: %s", helpers.TrackTitle(track)))
 }

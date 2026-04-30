@@ -1,6 +1,11 @@
 package commands
 
-import "ytdlpPlayer/commandrouter"
+import (
+	"github.com/disgoorg/disgo/events"
+
+	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
+)
 
 var All = map[string]commandrouter.Command{
 	"clear":        Clear,
@@ -17,4 +22,8 @@ var All = map[string]commandrouter.Command{
 	"restart":      Restart,
 	"skip":         Skip,
 	"stop":         Stop,
+}
+
+func HandleComponent(ctx commandrouter.Context, event *events.ComponentInteractionCreate) {
+	helpers.HandleComponent(ctx, event)
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 const diddyURL = "https://youtu.be/B_1KwX2M-Mc"
@@ -18,5 +19,5 @@ var Diddy = commandrouter.Command{
 }
 
 func handleDiddy(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	handleAddTrack(ctx, event, diddyURL, addLast)
+	helpers.HandleAddTrack(ctx, event, diddyURL, helpers.AddLast)
 }

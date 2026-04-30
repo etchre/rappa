@@ -1,4 +1,4 @@
-package commands
+package helpers
 
 import (
 	"fmt"
@@ -12,15 +12,15 @@ import (
 	"ytdlpPlayer/music"
 )
 
-type addMode int
+type AddMode int
 
 const (
-	addLast addMode = iota
-	addNext
-	playNow
+	AddLast AddMode = iota
+	AddNext
+	PlayNow
 )
 
-func playQuery(data discord.SlashCommandInteractionData) string {
+func PlayQuery(data discord.SlashCommandInteractionData) string {
 	if query, ok := data.OptString("query"); ok {
 		return query
 	}
@@ -28,7 +28,7 @@ func playQuery(data discord.SlashCommandInteractionData) string {
 	return data.String("link")
 }
 
-func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate, link string, mode addMode) {
+func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate, link string, mode AddMode) {
 	if ctx.Player == nil {
 		commandrouter.RespondError(event, "Music player is not ready yet.")
 		return
@@ -58,9 +58,9 @@ func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 
 	var result music.QueueResult
 	switch mode {
-	case playNow:
+	case PlayNow:
 		result, err = ctx.Player.PlayNow(ctx.Context, ctx.GuildID, link)
-	case addNext:
+	case AddNext:
 		result, err = ctx.Player.AddNext(ctx.Context, ctx.GuildID, link)
 	default:
 		result, err = ctx.Player.Add(ctx.Context, ctx.GuildID, link)
@@ -70,16 +70,16 @@ func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		return
 	}
 
-	title := trackTitle(result.Track)
+	title := TrackTitle(result.Track)
 	if result.Queued {
-		content, embed := queuedEmbed(result, event.User().Mention())
+		content, embed := QueuedEmbed(result, event.User().Mention())
 		commandrouter.UpdateResponseContentEmbed(event, content, embed)
 		return
 	}
 
 	snapshot := ctx.Player.Queue(ctx.GuildID)
 	if snapshot.Current != nil {
-		commandrouter.UpdateResponseEmbed(event, nowPlayingEmbed(*snapshot.Current, snapshot.Queued, snapshot.Position, snapshot.Volume, event.User().Mention()))
+		commandrouter.UpdateResponseEmbed(event, NowPlayingEmbed(*snapshot.Current, snapshot.Queued, snapshot.Position, snapshot.Volume, event.User().Mention()))
 		return
 	}
 

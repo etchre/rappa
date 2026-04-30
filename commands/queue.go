@@ -3,13 +3,12 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
-	"github.com/disgoorg/disgolink/v3/lavalink"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var Queue = commandrouter.Command{
@@ -32,14 +31,14 @@ func handleQueue(ctx commandrouter.Context, event *events.ApplicationCommandInte
 		return
 	}
 	if snapshot.Current == nil {
-		if err := event.CreateMessage(discord.NewMessageCreate().WithContent(formatQueue(nil, snapshot.Queued))); err != nil {
+		if err := event.CreateMessage(discord.NewMessageCreate().WithContent(helpers.FormatQueue(nil, snapshot.Queued))); err != nil {
 			fmt.Fprintf(os.Stderr, "queue response failed: %v\n", err)
 		}
 		return
 	}
 
-	components := queuePageComponents(0, len(snapshot.Queued))
-	message := discord.NewMessageCreate().WithEmbeds(queueEmbed(*snapshot.Current, snapshot.Queued, 0))
+	components := helpers.QueuePageComponents(0, len(snapshot.Queued))
+	message := discord.NewMessageCreate().WithEmbeds(helpers.QueueEmbed(*snapshot.Current, snapshot.Queued, 0))
 	if len(components) > 0 {
 		message = message.WithComponents(components...)
 	}
@@ -47,25 +46,4 @@ func handleQueue(ctx commandrouter.Context, event *events.ApplicationCommandInte
 	if err := event.CreateMessage(message); err != nil {
 		fmt.Fprintf(os.Stderr, "queue response failed: %v\n", err)
 	}
-}
-
-func formatQueue(current *lavalink.Track, queued []lavalink.Track) string {
-	var builder strings.Builder
-	builder.WriteString("Queue:\n")
-
-	if current != nil {
-		builder.WriteString("**Now playing: ")
-		builder.WriteString(trackTitle(*current))
-		builder.WriteString("**\n")
-	}
-
-	for i, track := range queued {
-		builder.WriteString(fmt.Sprintf("%d. %s\n", i+1, trackTitle(track)))
-	}
-
-	return builder.String()
-}
-
-func trackTitle(track lavalink.Track) string {
-	return fmt.Sprintf("%s - %s", track.Info.Author, track.Info.Title)
 }

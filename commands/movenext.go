@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var MoveNext = commandrouter.Command{
@@ -14,7 +15,7 @@ var MoveNext = commandrouter.Command{
 		Name:        "movenext",
 		Description: "Move a queued track to the front of the queue",
 		Options: []discord.ApplicationCommandOption{
-			queueNumberOption("The queued track number to move next"),
+			helpers.QueueNumberOption("The queued track number to move next"),
 		},
 	},
 	Handle: handleMoveNext,
@@ -26,7 +27,7 @@ func handleMoveNext(ctx commandrouter.Context, event *events.ApplicationCommandI
 		return
 	}
 
-	queueNumber, err := parseQueueNumber(event.SlashCommandInteractionData())
+	queueNumber, err := helpers.ParseQueueNumber(event.SlashCommandInteractionData())
 	if err != nil {
 		commandrouter.RespondError(event, err.Error())
 		return
@@ -38,5 +39,5 @@ func handleMoveNext(ctx commandrouter.Context, event *events.ApplicationCommandI
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Moved to queue position #1: %s", trackTitle(track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Moved to queue position #1: %s", helpers.TrackTitle(track)))
 }

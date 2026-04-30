@@ -1,4 +1,4 @@
-package commands
+package helpers
 
 import (
 	"fmt"
@@ -28,6 +28,21 @@ func HandleComponent(ctx commandrouter.Context, event *events.ComponentInteracti
 	handleQueuePageComponent(ctx, event, customID)
 }
 
+func QueuePageComponents(page int, queued int) []discord.LayoutComponent {
+	pageCount := QueuePageCount(queued)
+	if pageCount <= 1 {
+		return nil
+	}
+
+	page = ClampQueuePage(page, queued)
+	previous := discord.NewSecondaryButton("Previous", queueComponentID(page-1)).WithDisabled(page == 0)
+	next := discord.NewSecondaryButton("Next", queueComponentID(page+1)).WithDisabled(page >= pageCount-1)
+
+	return []discord.LayoutComponent{
+		discord.NewActionRow(previous, next),
+	}
+}
+
 func handleQueuePageComponent(ctx commandrouter.Context, event *events.ComponentInteractionCreate, customID string) {
 	page, err := strconv.Atoi(strings.TrimPrefix(customID, queueComponentPrefix))
 	if err != nil {
@@ -55,7 +70,7 @@ func handleQueuePageComponent(ctx commandrouter.Context, event *events.Component
 	if snapshot.Current == nil {
 		if err := event.UpdateMessage(
 			discord.NewMessageUpdate().
-				WithContent(formatQueue(nil, snapshot.Queued)).
+				WithContent(FormatQueue(nil, snapshot.Queued)).
 				ClearEmbeds().
 				WithComponents(),
 		); err != nil {
@@ -64,30 +79,15 @@ func handleQueuePageComponent(ctx commandrouter.Context, event *events.Component
 		return
 	}
 
-	page = clampQueuePage(page, len(snapshot.Queued))
-	components := queuePageComponents(page, len(snapshot.Queued))
+	page = ClampQueuePage(page, len(snapshot.Queued))
+	components := QueuePageComponents(page, len(snapshot.Queued))
 	if err := event.UpdateMessage(
 		discord.NewMessageUpdate().
 			ClearContent().
-			WithEmbeds(queueEmbed(*snapshot.Current, snapshot.Queued, page)).
+			WithEmbeds(QueueEmbed(*snapshot.Current, snapshot.Queued, page)).
 			WithComponents(components...),
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "queue page update failed: %v\n", err)
-	}
-}
-
-func queuePageComponents(page int, queued int) []discord.LayoutComponent {
-	pageCount := queuePageCount(queued)
-	if pageCount <= 1 {
-		return nil
-	}
-
-	page = clampQueuePage(page, queued)
-	previous := discord.NewSecondaryButton("Previous", queueComponentID(page-1)).WithDisabled(page == 0)
-	next := discord.NewSecondaryButton("Next", queueComponentID(page+1)).WithDisabled(page >= pageCount-1)
-
-	return []discord.LayoutComponent{
-		discord.NewActionRow(previous, next),
 	}
 }
 

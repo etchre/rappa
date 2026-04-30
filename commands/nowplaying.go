@@ -8,6 +8,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var NowPlaying = commandrouter.Command{
@@ -30,7 +31,7 @@ func handleNowPlaying(ctx commandrouter.Context, event *events.ApplicationComman
 		return
 	}
 
-	embed := nowPlayingEmbed(*snapshot.Current, nil, snapshot.Position, snapshot.Volume, "")
+	embed := helpers.NowPlayingEmbed(*snapshot.Current, nil, snapshot.Position, snapshot.Volume, "")
 	if err := event.CreateMessage(discord.NewMessageCreate().WithEmbeds(embed)); err != nil {
 		fmt.Fprintf(os.Stderr, "now playing response failed: %v\n", err)
 	}

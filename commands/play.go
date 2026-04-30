@@ -5,6 +5,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var Play = commandrouter.Command{
@@ -24,5 +25,5 @@ var Play = commandrouter.Command{
 
 func handlePlay(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
 	data := event.SlashCommandInteractionData()
-	handleAddTrack(ctx, event, playQuery(data), addLast)
+	helpers.HandleAddTrack(ctx, event, helpers.PlayQuery(data), helpers.AddLast)
 }

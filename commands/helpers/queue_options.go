@@ -1,4 +1,4 @@
-package commands
+package helpers
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 var minQueueNumber = 1
 
-func queueNumberOption(description string) discord.ApplicationCommandOptionInt {
+func QueueNumberOption(description string) discord.ApplicationCommandOptionInt {
 	return discord.ApplicationCommandOptionInt{
 		Name:        "queue_number",
 		Description: description,
@@ -17,7 +17,7 @@ func queueNumberOption(description string) discord.ApplicationCommandOptionInt {
 	}
 }
 
-func parseQueueNumber(data discord.SlashCommandInteractionData) (int, error) {
+func ParseQueueNumber(data discord.SlashCommandInteractionData) (int, error) {
 	if number, ok := data.OptInt("queue_number"); ok {
 		return number, nil
 	}

@@ -1,4 +1,4 @@
-package commands
+package helpers
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"ytdlpPlayer/music"
 )
 
-func queuedEmbed(result music.QueueResult, requester string) (string, discord.Embed) {
+func QueuedEmbed(result music.QueueResult, requester string) (string, discord.Embed) {
 	if result.Added > 1 {
 		return collectionQueuedContent(result.CollectionKind), collectionQueuedEmbed(result, requester)
 	}
@@ -21,7 +21,7 @@ func songQueuedEmbed(track lavalink.Track, requester string) discord.Embed {
 	embed := discord.Embed{}.
 		WithColor(musicEmbedColor).
 		WithTitle(track.Info.Title).
-		WithDescription(fmt.Sprintf("Duration: `%s`\nArtist: %s", formatDuration(track.Info.Length), track.Info.Author)).
+		WithDescription(fmt.Sprintf("Duration: `%s`\nArtist: %s", FormatDuration(track.Info.Length), track.Info.Author)).
 		AddField("Requested by", requester, true)
 
 	if track.Info.URI != nil {
@@ -37,13 +37,13 @@ func songQueuedEmbed(track lavalink.Track, requester string) discord.Embed {
 func collectionQueuedEmbed(result music.QueueResult, requester string) discord.Embed {
 	title := result.CollectionName
 	if title == "" {
-		title = trackTitle(result.Track)
+		title = TrackTitle(result.Track)
 	}
 
 	embed := discord.Embed{}.
 		WithColor(musicEmbedColor).
 		WithTitle(title).
-		WithDescription(fmt.Sprintf("Duration: `%s`", formatDuration(totalLength(result.Tracks)))).
+		WithDescription(fmt.Sprintf("Duration: `%s`", FormatDuration(totalLength(result.Tracks)))).
 		AddField("Tracks", collectionTrackPreview(result.Tracks), false).
 		AddField("Requested by", requester, true)
 
@@ -63,7 +63,7 @@ func collectionTrackPreview(tracks []lavalink.Track) string {
 		limit = len(tracks)
 	}
 
-	preview := numberedTracksFrom(tracks[:limit], 1)
+	preview := NumberedTracksFrom(tracks[:limit], 1)
 	if len(tracks) > limit {
 		preview += fmt.Sprintf("+%d more tracks...", len(tracks)-limit)
 	}

@@ -12,7 +12,7 @@ services:
       LAVALINK_ADDRESS: lavalink:2333
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
       LAVALINK_SECURE: "false"
-      SYNC_GLOBAL_COMMANDS: ${SYNC_GLOBAL_COMMANDS:-false}
+      SYNC_GLOBAL_COMMANDS: ${SYNC_GLOBAL_COMMANDS:-true}
       CLEAR_GLOBAL_COMMANDS: ${CLEAR_GLOBAL_COMMANDS:-false}
     depends_on:
       - lavalink

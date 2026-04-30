@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var Remove = commandrouter.Command{
@@ -14,7 +15,7 @@ var Remove = commandrouter.Command{
 		Name:        "remove",
 		Description: "Remove a track from the queue",
 		Options: []discord.ApplicationCommandOption{
-			queueNumberOption("The queued track number to remove"),
+			helpers.QueueNumberOption("The queued track number to remove"),
 		},
 	},
 	Handle: handleRemove,
@@ -26,7 +27,7 @@ func handleRemove(ctx commandrouter.Context, event *events.ApplicationCommandInt
 		return
 	}
 
-	queueNumber, err := parseQueueNumber(event.SlashCommandInteractionData())
+	queueNumber, err := helpers.ParseQueueNumber(event.SlashCommandInteractionData())
 	if err != nil {
 		commandrouter.RespondError(event, err.Error())
 		return
@@ -38,5 +39,5 @@ func handleRemove(ctx commandrouter.Context, event *events.ApplicationCommandInt
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Removed from queue: %s", trackTitle(track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Removed from queue: %s", helpers.TrackTitle(track)))
 }

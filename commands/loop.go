@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
+	"ytdlpPlayer/commands/helpers"
 )
 
 var Loop = commandrouter.Command{
@@ -33,5 +34,5 @@ func handleLoop(ctx commandrouter.Context, event *events.ApplicationCommandInter
 	if result.Looping {
 		status = "enabled"
 	}
-	commandrouter.RespondError(event, fmt.Sprintf("Loop %s for: %s", status, trackTitle(result.Track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Loop %s for: %s", status, helpers.TrackTitle(result.Track)))
 }
