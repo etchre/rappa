@@ -2,6 +2,9 @@
 
 A Discord music bot written in Go. It uses DisGo for Discord interactions and Lavalink for audio playback.
 
+> [!NOTE]
+> this project is vibed out the wazoo, use at your own risk
+
 ## Setup
 
 This project is intended to run with Docker Compose using [compose.example.yml](compose.example.yml).
@@ -51,3 +54,7 @@ Rebuild after code changes:
 ```bash
 docker compose -f compose.example.yml up -d --build
 ```
+
+## License
+
+MIT
