@@ -19,12 +19,14 @@ type guildPlayback struct {
 	current *lavalink.Track
 	queue   []lavalink.Track
 	playing bool
+	looping bool
 }
 
 type QueueResult struct {
 	Track    lavalink.Track
 	Queued   bool
 	Position int
+	Added    int
 }
 
 type QueueSnapshot struct {
@@ -35,6 +37,11 @@ type QueueSnapshot struct {
 type SkipResult struct {
 	Next    *lavalink.Track
 	Stopped bool
+}
+
+type LoopResult struct {
+	Track   lavalink.Track
+	Looping bool
 }
 
 func NewPlayer(lavalinkClient disgolink.Client) *Player {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
 	"ytdlpPlayer/commandrouter"
@@ -16,7 +17,16 @@ type addMode int
 const (
 	addLast addMode = iota
 	addNext
+	playNow
 )
+
+func playQuery(data discord.SlashCommandInteractionData) string {
+	if query, ok := data.OptString("query"); ok {
+		return query
+	}
+
+	return data.String("link")
+}
 
 func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate, link string, mode addMode) {
 	if ctx.Player == nil {
@@ -48,6 +58,8 @@ func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 
 	var result music.QueueResult
 	switch mode {
+	case playNow:
+		result, err = ctx.Player.PlayNow(ctx.Context, ctx.GuildID, link)
 	case addNext:
 		result, err = ctx.Player.AddNext(ctx.Context, ctx.GuildID, link)
 	default:
@@ -60,7 +72,17 @@ func handleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 
 	title := trackTitle(result.Track)
 	if result.Queued {
+		if result.Added > 1 {
+			commandrouter.UpdateResponse(event, fmt.Sprintf("Queued %d tracks starting at #%d: %s", result.Added, result.Position, title))
+			return
+		}
+
 		commandrouter.UpdateResponse(event, fmt.Sprintf("Queued #%d: %s", result.Position, title))
+		return
+	}
+
+	if result.Added > 1 {
+		commandrouter.UpdateResponse(event, fmt.Sprintf("Now playing: %s\nQueued %d more track(s).", title, result.Added-1))
 		return
 	}
 

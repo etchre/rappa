@@ -13,8 +13,8 @@ var PlayNext = commandrouter.Command{
 		Description: "Play a link next, ahead of the rest of the queue",
 		Options: []discord.ApplicationCommandOption{
 			discord.ApplicationCommandOptionString{
-				Name:        "link",
-				Description: "The track link to play next",
+				Name:        "query",
+				Description: "A track link or YouTube search query",
 				Required:    true,
 			},
 		},
@@ -24,5 +24,5 @@ var PlayNext = commandrouter.Command{
 
 func handlePlayNext(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
 	data := event.SlashCommandInteractionData()
-	handleAddTrack(ctx, event, data.String("link"), addNext)
+	handleAddTrack(ctx, event, playQuery(data), addNext)
 }

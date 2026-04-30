@@ -10,6 +10,7 @@ downloads/
 # Go build output
 ytdlpPlayer
 *.test
+bin/
 
 # Editor/workspace-local files
 *.code-workspace

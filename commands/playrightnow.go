@@ -7,10 +7,10 @@ import (
 	"ytdlpPlayer/commandrouter"
 )
 
-var Play = commandrouter.Command{
+var PlayRightNow = commandrouter.Command{
 	Definition: discord.SlashCommandCreate{
-		Name:        "play",
-		Description: "Play a track from a link, or queue it if music is already playing",
+		Name:        "playrightnow",
+		Description: "Replace the current track immediately while keeping the queue intact",
 		Options: []discord.ApplicationCommandOption{
 			discord.ApplicationCommandOptionString{
 				Name:        "query",
@@ -19,10 +19,10 @@ var Play = commandrouter.Command{
 			},
 		},
 	},
-	Handle: handlePlay,
+	Handle: handlePlayRightNow,
 }
 
-func handlePlay(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
+func handlePlayRightNow(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
 	data := event.SlashCommandInteractionData()
-	handleAddTrack(ctx, event, playQuery(data), addLast)
+	handleAddTrack(ctx, event, playQuery(data), playNow)
 }

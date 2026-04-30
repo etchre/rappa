@@ -13,6 +13,7 @@ import (
 func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, error) {
 	p.mu.Lock()
 	playback := p.playback(guildID)
+	playback.looping = false
 	if len(playback.queue) == 0 {
 		wasPlaying := playback.playing
 		playback.playing = false
@@ -48,6 +49,7 @@ func (p *Player) Stop(ctx context.Context, guildID snowflake.ID) error {
 	playback.playing = false
 	playback.current = nil
 	playback.queue = nil
+	playback.looping = false
 	p.mu.Unlock()
 
 	if !wasPlaying {
@@ -70,9 +72,16 @@ func (p *Player) OnTrackEnd(player disgolink.Player, event lavalink.TrackEndEven
 func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	p.mu.Lock()
 	playback := p.playback(guildID)
+	if playback.looping && playback.current != nil {
+		current := *playback.current
+		p.mu.Unlock()
+		return p.playTrack(ctx, guildID, current)
+	}
+
 	if len(playback.queue) == 0 {
 		playback.playing = false
 		playback.current = nil
+		playback.looping = false
 		p.mu.Unlock()
 		return nil
 	}
@@ -102,4 +111,38 @@ func (p *Player) clearLavalinkTrack(ctx context.Context, guildID snowflake.ID) e
 	}
 
 	return nil
+}
+
+func (p *Player) ToggleLoop(guildID snowflake.ID) (LoopResult, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	playback := p.playback(guildID)
+	if !playback.playing || playback.current == nil {
+		return LoopResult{}, fmt.Errorf("nothing is playing")
+	}
+
+	playback.looping = !playback.looping
+	return LoopResult{
+		Track:   *playback.current,
+		Looping: playback.looping,
+	}, nil
+}
+
+func (p *Player) Restart(ctx context.Context, guildID snowflake.ID) (lavalink.Track, error) {
+	p.mu.Lock()
+	playback := p.playback(guildID)
+	if !playback.playing || playback.current == nil {
+		p.mu.Unlock()
+		return lavalink.Track{}, fmt.Errorf("nothing is playing")
+	}
+	current := *playback.current
+	p.mu.Unlock()
+
+	player := p.lavalink.Player(guildID)
+	if err := player.Update(ctx, lavalink.WithPosition(0)); err != nil {
+		return lavalink.Track{}, fmt.Errorf("restart track: %w", err)
+	}
+
+	return current, nil
 }
