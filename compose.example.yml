@@ -25,7 +25,6 @@ services:
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
     volumes:
       - ./deploy/lavalink/application.yml:/opt/Lavalink/application.yml:ro
-      - ./deploy/lavalink/plugins:/opt/Lavalink/plugins
     expose:
       - "2333"
     # Uncomment this if you want to inspect Lavalink from another machine.
