@@ -39,6 +39,20 @@ func NowPlayingEmbed(current lavalink.Track, queued []lavalink.Track, position l
 	return embed
 }
 
+func UnableToPlayEmbed(track lavalink.Track) discord.Embed {
+	embed := discord.Embed{}.
+		WithTitle("Unable to Play").
+		WithColor(0xE74C3C).
+		WithDescription(trackLink(track)).
+		AddField("Artist", track.Info.Author, true)
+
+	if track.Info.ArtworkURL != nil {
+		embed = embed.WithThumbnail(*track.Info.ArtworkURL)
+	}
+
+	return embed
+}
+
 func QueueEmbed(current lavalink.Track, queued []lavalink.Track, page int) discord.Embed {
 	page = ClampQueuePage(page, len(queued))
 	pageCount := QueuePageCount(len(queued))

@@ -1,6 +1,7 @@
 package music
 
 import (
+	"context"
 	"sync"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
@@ -9,7 +10,11 @@ import (
 )
 
 type Player struct {
-	lavalink disgolink.Client
+	lavalink             disgolink.Client
+	autoTrackStartNotify func(ctx context.Context, guildID snowflake.ID)
+	trackFailureNotify   func(ctx context.Context, guildID snowflake.ID, track lavalink.Track)
+	playbackActiveNotify func(ctx context.Context, guildID snowflake.ID)
+	playbackIdleNotify   func(ctx context.Context, guildID snowflake.ID)
 
 	mu     sync.Mutex
 	guilds map[snowflake.ID]*guildPlayback
@@ -72,6 +77,22 @@ func NewPlayer(lavalinkClient disgolink.Client) *Player {
 		lavalink: lavalinkClient,
 		guilds:   map[snowflake.ID]*guildPlayback{},
 	}
+}
+
+func (p *Player) SetAutoTrackStartNotifier(notify func(ctx context.Context, guildID snowflake.ID)) {
+	p.autoTrackStartNotify = notify
+}
+
+func (p *Player) SetTrackFailureNotifier(notify func(ctx context.Context, guildID snowflake.ID, track lavalink.Track)) {
+	p.trackFailureNotify = notify
+}
+
+func (p *Player) SetPlaybackActiveNotifier(notify func(ctx context.Context, guildID snowflake.ID)) {
+	p.playbackActiveNotify = notify
+}
+
+func (p *Player) SetPlaybackIdleNotifier(notify func(ctx context.Context, guildID snowflake.ID)) {
+	p.playbackIdleNotify = notify
 }
 
 func (p *Player) node() disgolink.Node {

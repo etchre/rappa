@@ -7,12 +7,15 @@ import (
 
 	"github.com/disgoorg/disgo"
 	disgobot "github.com/disgoorg/disgo/bot"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgolink/v3/disgolink"
 	"github.com/disgoorg/disgolink/v3/lavalink"
+	"github.com/disgoorg/snowflake/v2"
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands"
+	"ytdlpPlayer/commands/helpers"
 	"ytdlpPlayer/music"
 )
 
@@ -22,10 +25,15 @@ type app struct {
 	lavalink disgolink.Client
 	player   *music.Player
 	router   commandrouter.Router
+	channels *commandrouter.StatusChannels
+	idle     *idleDisconnects
 }
 
 func newApp(ctx context.Context, cfg config) (*app, error) {
-	app := &app{config: cfg}
+	app := &app{
+		config:   cfg,
+		channels: commandrouter.NewStatusChannels(),
+	}
 
 	client, err := disgo.New(
 		cfg.token,
@@ -45,6 +53,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 	}
 
 	app.discord = client
+	app.idle = newIdleDisconnects(cfg.idleDisconnectTimeout, app.disconnectFromVoice)
 	app.lavalink = disgolink.New(
 		client.ApplicationID,
 		disgolink.WithListenerFunc(func(disgolinkPlayer disgolink.Player, event lavalink.TrackEndEvent) {
@@ -55,8 +64,13 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		}),
 	)
 	app.player = music.NewPlayer(app.lavalink)
+	app.player.SetAutoTrackStartNotifier(app.sendNowPlayingUpdate)
+	app.player.SetTrackFailureNotifier(app.sendUnableToPlayUpdate)
+	app.player.SetPlaybackActiveNotifier(app.cancelIdleDisconnect)
+	app.player.SetPlaybackIdleNotifier(app.scheduleIdleDisconnect)
 	app.router = commandrouter.New(commandrouter.Context{
 		Player:                app.player,
+		StatusChannels:        app.channels,
 		PremiumAllowedUsers:   cfg.premiumAllowedUsers,
 		PremiumAllowedUserIDs: cfg.premiumAllowedUserIDs,
 	}, commands.All)
@@ -89,7 +103,40 @@ func (app *app) warmDiscordRest() {
 	}
 }
 
+func (app *app) sendNowPlayingUpdate(ctx context.Context, guildID snowflake.ID) {
+	channelID, ok := app.channels.Get(guildID)
+	if !ok {
+		return
+	}
+
+	snapshot := app.player.Queue(guildID)
+	if snapshot.Current == nil {
+		return
+	}
+
+	embed := helpers.NowPlayingEmbed(*snapshot.Current, snapshot.Queued, snapshot.Position, snapshot.Volume, "")
+	if _, err := app.discord.Rest.CreateMessage(channelID, discord.NewMessageCreate().WithEmbeds(embed)); err != nil {
+		fmt.Fprintf(os.Stderr, "now playing update failed: %v\n", err)
+	}
+}
+
+func (app *app) sendUnableToPlayUpdate(ctx context.Context, guildID snowflake.ID, track lavalink.Track) {
+	channelID, ok := app.channels.Get(guildID)
+	if !ok {
+		return
+	}
+
+	embed := helpers.UnableToPlayEmbed(track)
+	if _, err := app.discord.Rest.CreateMessage(channelID, discord.NewMessageCreate().WithEmbeds(embed)); err != nil {
+		fmt.Fprintf(os.Stderr, "unable to play update failed: %v\n", err)
+	}
+}
+
 func (app *app) close(ctx context.Context) {
+	if app.idle != nil {
+		app.idle.stopAll()
+	}
+
 	if app.discord != nil {
 		app.discord.Close(ctx)
 	}

@@ -20,6 +20,7 @@ type Context struct {
 	Context               context.Context
 	GuildID               snowflake.ID
 	Player                *music.Player
+	StatusChannels        *StatusChannels
 	PremiumAllowedUsers   map[snowflake.ID]bool
 	PremiumAllowedUserIDs string
 }

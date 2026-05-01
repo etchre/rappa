@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
 	"github.com/disgoorg/snowflake/v2"
@@ -17,6 +18,7 @@ type config struct {
 	lavalink              disgolink.NodeConfig
 	premiumAllowedUserIDs string
 	premiumAllowedUsers   map[snowflake.ID]bool
+	idleDisconnectTimeout time.Duration
 }
 
 func loadConfig() (config, error) {
@@ -40,12 +42,18 @@ func loadConfig() (config, error) {
 		return config{}, err
 	}
 
+	idleDisconnectTimeout, err := envDuration("IDLE_DISCONNECT_TIMEOUT", 5*time.Minute)
+	if err != nil {
+		return config{}, err
+	}
+
 	return config{
 		token:                 token,
 		clearGlobalCommands:   clearGlobalCommands,
 		syncGlobalCommands:    syncGlobalCommands,
 		premiumAllowedUserIDs: os.Getenv("PREMIUM_ALLOWED_USER_IDS"),
 		premiumAllowedUsers:   parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),
+		idleDisconnectTimeout: idleDisconnectTimeout,
 		lavalink: disgolink.NodeConfig{
 			Name:     envDefault("LAVALINK_NODE_NAME", "local"),
 			Address:  envDefault("LAVALINK_ADDRESS", "localhost:2333"),
@@ -94,4 +102,23 @@ func envBool(name string, fallback bool) (bool, error) {
 	}
 
 	return parsed, nil
+}
+
+func envDuration(name string, fallback time.Duration) (time.Duration, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback, nil
+	}
+
+	duration, err := time.ParseDuration(value)
+	if err == nil {
+		return duration, nil
+	}
+
+	seconds, secondsErr := strconv.Atoi(value)
+	if secondsErr != nil {
+		return 0, fmt.Errorf("parse %s as duration like 5m or seconds: %w", name, err)
+	}
+
+	return time.Duration(seconds) * time.Second, nil
 }

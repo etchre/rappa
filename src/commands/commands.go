@@ -20,6 +20,7 @@ var All = map[string]commandrouter.Command{
 	"queue":        Queue,
 	"remove":       Remove,
 	"restart":      Restart,
+	"setchannel":   SetChannel,
 	"skip":         Skip,
 	"stop":         Stop,
 	"mae":          Mae,

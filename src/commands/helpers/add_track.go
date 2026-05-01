@@ -53,6 +53,9 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to join voice: %v", err))
 		return
 	}
+	if ctx.StatusChannels != nil {
+		ctx.StatusChannels.SetFallbackIfUnset(ctx.GuildID, event.Channel().ID())
+	}
 
 	time.Sleep(2 * time.Second)
 

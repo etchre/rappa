@@ -21,6 +21,7 @@ func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, er
 		p.mu.Unlock()
 
 		if wasPlaying {
+			p.notifyPlaybackIdle(ctx, guildID)
 			if err := p.clearLavalinkTrack(ctx, guildID); err != nil {
 				return SkipResult{}, err
 			}
@@ -57,6 +58,7 @@ func (p *Player) Stop(ctx context.Context, guildID snowflake.ID) error {
 		return nil
 	}
 
+	p.notifyPlaybackIdle(ctx, guildID)
 	return p.clearLavalinkTrack(ctx, guildID)
 }
 
@@ -169,6 +171,7 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 		playback.current = nil
 		playback.looping = false
 		p.mu.Unlock()
+		p.notifyPlaybackIdle(ctx, guildID)
 		return nil
 	}
 
@@ -177,7 +180,11 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	playback.current = &next
 	p.mu.Unlock()
 
-	return p.playTrack(ctx, guildID, next.Track)
+	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
+		return err
+	}
+	p.notifyAutoTrackStart(ctx, guildID)
+	return nil
 }
 
 func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lavalink.Track) error {
@@ -187,6 +194,7 @@ func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lava
 		return fmt.Errorf("play track: %w", err)
 	}
 
+	p.notifyPlaybackActive(ctx, guildID)
 	fmt.Printf("Now playing on Lavalink node %q: %s\n", playerNodeName(player), trackTitle(track))
 	return nil
 }
@@ -251,6 +259,8 @@ func (p *Player) advanceAfterFailedTrack(ctx context.Context, guildID snowflake.
 		playback.current = nil
 		playback.playing = false
 		p.mu.Unlock()
+		p.notifyTrackFailure(ctx, guildID, failedTrack)
+		p.notifyPlaybackIdle(ctx, guildID)
 		return p.clearLavalinkTrack(ctx, guildID)
 	}
 
@@ -260,7 +270,44 @@ func (p *Player) advanceAfterFailedTrack(ctx context.Context, guildID snowflake.
 	playback.playing = true
 	p.mu.Unlock()
 
-	return p.playTrack(ctx, guildID, next.Track)
+	p.notifyTrackFailure(ctx, guildID, failedTrack)
+	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
+		return err
+	}
+	p.notifyAutoTrackStart(ctx, guildID)
+	return nil
+}
+
+func (p *Player) notifyAutoTrackStart(ctx context.Context, guildID snowflake.ID) {
+	if p.autoTrackStartNotify == nil {
+		return
+	}
+
+	p.autoTrackStartNotify(ctx, guildID)
+}
+
+func (p *Player) notifyTrackFailure(ctx context.Context, guildID snowflake.ID, track lavalink.Track) {
+	if p.trackFailureNotify == nil {
+		return
+	}
+
+	p.trackFailureNotify(ctx, guildID, track)
+}
+
+func (p *Player) notifyPlaybackActive(ctx context.Context, guildID snowflake.ID) {
+	if p.playbackActiveNotify == nil {
+		return
+	}
+
+	p.playbackActiveNotify(ctx, guildID)
+}
+
+func (p *Player) notifyPlaybackIdle(ctx context.Context, guildID snowflake.ID) {
+	if p.playbackIdleNotify == nil {
+		return
+	}
+
+	p.playbackIdleNotify(ctx, guildID)
 }
 
 func (p *Player) clearLavalinkTrack(ctx context.Context, guildID snowflake.ID) error {
