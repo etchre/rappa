@@ -14,9 +14,10 @@ var Play = commandrouter.Command{
 		Description: "Play a track from a link, or queue it if music is already playing",
 		Options: []discord.ApplicationCommandOption{
 			discord.ApplicationCommandOptionString{
-				Name:        "query",
-				Description: "A track link or YouTube search query",
-				Required:    true,
+				Name:         "query",
+				Description:  "A track link or YouTube search query",
+				Required:     true,
+				Autocomplete: true,
 			},
 			discord.ApplicationCommandOptionBool{
 				Name:        "shuffle",

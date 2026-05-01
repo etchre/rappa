@@ -65,6 +65,15 @@ func (app *app) onApplicationCommand(ctx context.Context) func(event *events.App
 	}
 }
 
+func (app *app) onAutocomplete(ctx context.Context) func(event *events.AutocompleteInteractionCreate) {
+	return func(event *events.AutocompleteInteractionCreate) {
+		go commands.HandleAutocomplete(commandrouter.Context{
+			Context: ctx,
+			Player:  app.player,
+		}, event)
+	}
+}
+
 func (app *app) onComponentInteraction(ctx context.Context) func(event *events.ComponentInteractionCreate) {
 	return func(event *events.ComponentInteractionCreate) {
 		go func() {

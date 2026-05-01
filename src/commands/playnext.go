@@ -14,9 +14,10 @@ var PlayNext = commandrouter.Command{
 		Description: "Play a link next, ahead of the rest of the queue",
 		Options: []discord.ApplicationCommandOption{
 			discord.ApplicationCommandOptionString{
-				Name:        "query",
-				Description: "A track link or YouTube search query",
-				Required:    true,
+				Name:         "query",
+				Description:  "A track link or YouTube search query",
+				Required:     true,
+				Autocomplete: true,
 			},
 			discord.ApplicationCommandOptionBool{
 				Name:        "shuffle",

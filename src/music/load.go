@@ -23,6 +23,36 @@ type playableLoad struct {
 	CollectionKind string
 }
 
+func (p *Player) Search(ctx context.Context, query string, limit int) ([]lavalink.Track, error) {
+	query = strings.TrimSpace(query)
+	if query == "" || isURL(query) {
+		return nil, nil
+	}
+
+	node := p.node()
+	if node == nil {
+		return nil, fmt.Errorf("no lavalink node is available")
+	}
+
+	result, err := node.LoadTracks(ctx, youtubeSearchPrefix+query)
+	if err != nil {
+		return nil, fmt.Errorf("search tracks: %w", err)
+	}
+	if result.LoadType != lavalink.LoadTypeSearch {
+		return nil, nil
+	}
+
+	tracks, ok := result.Data.(lavalink.Search)
+	if !ok {
+		return nil, fmt.Errorf("unexpected search result data: %T", result.Data)
+	}
+	if len(tracks) > limit {
+		tracks = tracks[:limit]
+	}
+
+	return tracks, nil
+}
+
 func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier string) (playableLoad, error) {
 	originalIdentifier := identifier
 	identifier = playableIdentifierForNode(node, identifier)

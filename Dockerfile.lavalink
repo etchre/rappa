@@ -11,7 +11,10 @@ FROM ghcr.io/lavalink-devs/lavalink:4-alpine
 
 USER root
 
+ARG YOUTUBE_PLUGIN_VERSION=1.18.0
+
 RUN apk add --no-cache \
+    curl \
     deno \
     ffmpeg \
     nodejs \
@@ -21,6 +24,9 @@ RUN apk add --no-cache \
   && printf '%s\n' '--js-runtimes' 'node' > /etc/yt-dlp.conf
 
 RUN mkdir -p /opt/Lavalink/plugins \
+  && curl --fail --location --retry 5 --retry-delay 3 \
+    --output /opt/Lavalink/plugins/youtube-plugin-${YOUTUBE_PLUGIN_VERSION}.jar \
+    https://maven.lavalink.dev/releases/dev/lavalink/youtube/youtube-plugin/${YOUTUBE_PLUGIN_VERSION}/youtube-plugin-${YOUTUBE_PLUGIN_VERSION}.jar \
   && chown -R lavalink:lavalink /opt/Lavalink/plugins
 
 COPY --chown=lavalink:lavalink --from=plugin-builder /plugin/build/libs/*.jar /opt/Lavalink/plugins/

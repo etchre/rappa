@@ -14,9 +14,10 @@ var PlayRightNow = commandrouter.Command{
 		Description: "Replace the current track immediately while keeping the queue intact",
 		Options: []discord.ApplicationCommandOption{
 			discord.ApplicationCommandOptionString{
-				Name:        "query",
-				Description: "A track link or YouTube search query",
-				Required:    true,
+				Name:         "query",
+				Description:  "A track link or YouTube search query",
+				Required:     true,
+				Autocomplete: true,
 			},
 			discord.ApplicationCommandOptionBool{
 				Name:        "shuffle",

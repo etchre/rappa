@@ -50,6 +50,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		disgobot.WithEventListenerFunc(app.onVoiceStateUpdate(ctx)),
 		disgobot.WithEventListenerFunc(app.onVoiceServerUpdate(ctx)),
 		disgobot.WithEventListenerFunc(app.onApplicationCommand(ctx)),
+		disgobot.WithEventListenerFunc(app.onAutocomplete(ctx)),
 		disgobot.WithEventListenerFunc(app.onComponentInteraction(ctx)),
 		disgobot.WithEventListenerFunc(app.onGuildsReady(ctx)),
 		disgobot.WithEventListenerFunc(app.onGuildReady(ctx)),
