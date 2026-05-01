@@ -50,18 +50,31 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		disgolink.WithListenerFunc(func(disgolinkPlayer disgolink.Player, event lavalink.TrackEndEvent) {
 			app.player.OnTrackEnd(disgolinkPlayer, event)
 		}),
+		disgolink.WithListenerFunc(func(disgolinkPlayer disgolink.Player, event lavalink.TrackExceptionEvent) {
+			app.player.OnTrackException(disgolinkPlayer, event)
+		}),
 	)
-	app.player = music.NewPlayer(app.lavalink)
+	app.player = music.NewPlayer(app.lavalink, cfg.preferredNodeName, cfg.premiumNodeName)
 	app.router = commandrouter.New(commandrouter.Context{
-		Player: app.player,
+		Player:              app.player,
+		PremiumAllowedUsers: cfg.premiumAllowedUsers,
 	}, commands.All)
 
 	return app, nil
 }
 
 func (app *app) connectLavalink(ctx context.Context) error {
-	_, err := app.lavalink.AddNode(ctx, app.config.lavalink)
-	return err
+	for _, nodeConfig := range app.config.lavalinkNodes {
+		if _, err := app.lavalink.AddNode(ctx, nodeConfig); err != nil {
+			return fmt.Errorf("connect %s node: %w", nodeConfig.Name, err)
+		}
+	}
+
+	if app.lavalink.Node(app.config.preferredNodeName) == nil {
+		return fmt.Errorf("preferred lavalink node %q is not connected", app.config.preferredNodeName)
+	}
+
+	return nil
 }
 
 func (app *app) registerCommands() error {

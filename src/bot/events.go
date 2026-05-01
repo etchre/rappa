@@ -15,7 +15,7 @@ func (app *app) onVoiceStateUpdate(ctx context.Context) func(event *events.Guild
 			return
 		}
 
-		app.lavalink.OnVoiceStateUpdate(ctx, event.VoiceState.GuildID, event.VoiceState.ChannelID, event.VoiceState.SessionID)
+		app.player.OnVoiceStateUpdate(ctx, event.VoiceState.GuildID, event.VoiceState.ChannelID, event.VoiceState.SessionID)
 	}
 }
 
@@ -25,7 +25,7 @@ func (app *app) onVoiceServerUpdate(ctx context.Context) func(event *events.Voic
 			return
 		}
 
-		app.lavalink.OnVoiceServerUpdate(ctx, event.GuildID, event.Token, *event.Endpoint)
+		app.player.OnVoiceServerUpdate(ctx, event.GuildID, event.Token, *event.Endpoint)
 	}
 }
 

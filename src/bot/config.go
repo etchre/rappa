@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
+	"github.com/disgoorg/snowflake/v2"
 )
 
 type config struct {
 	token               string
 	clearGlobalCommands bool
 	syncGlobalCommands  bool
-	lavalink            disgolink.NodeConfig
+	lavalinkNodes       []disgolink.NodeConfig
+	preferredNodeName   string
+	premiumNodeName     string
+	premiumAllowedUsers map[snowflake.ID]bool
 }
 
 func loadConfig() (config, error) {
@@ -22,6 +27,10 @@ func loadConfig() (config, error) {
 	}
 
 	lavalinkSecure, err := envBool("LAVALINK_SECURE", false)
+	if err != nil {
+		return config{}, err
+	}
+	lavalinkPremiumSecure, err := envBool("LAVALINK_PREMIUM_SECURE", false)
 	if err != nil {
 		return config{}, err
 	}
@@ -40,13 +49,43 @@ func loadConfig() (config, error) {
 		token:               token,
 		clearGlobalCommands: clearGlobalCommands,
 		syncGlobalCommands:  syncGlobalCommands,
-		lavalink: disgolink.NodeConfig{
-			Name:     envDefault("LAVALINK_NODE_NAME", "local"),
-			Address:  envDefault("LAVALINK_ADDRESS", "localhost:2333"),
-			Password: envDefault("LAVALINK_PASSWORD", "youshallnotpass"),
-			Secure:   lavalinkSecure,
+		preferredNodeName:   envDefault("LAVALINK_PREFERRED_NODE_NAME", envDefault("LAVALINK_NODE_NAME", "local")),
+		premiumNodeName:     envDefault("LAVALINK_PREMIUM_NODE_NAME", "premium"),
+		premiumAllowedUsers: parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),
+		lavalinkNodes: []disgolink.NodeConfig{
+			{
+				Name:     envDefault("LAVALINK_NODE_NAME", "local"),
+				Address:  envDefault("LAVALINK_ADDRESS", "localhost:2333"),
+				Password: envDefault("LAVALINK_PASSWORD", "youshallnotpass"),
+				Secure:   lavalinkSecure,
+			},
+			{
+				Name:     envDefault("LAVALINK_PREMIUM_NODE_NAME", "premium"),
+				Address:  envDefault("LAVALINK_PREMIUM_ADDRESS", "localhost:2333"),
+				Password: envDefault("LAVALINK_PREMIUM_PASSWORD", envDefault("LAVALINK_PASSWORD", "youshallnotpass")),
+				Secure:   lavalinkPremiumSecure,
+			},
 		},
 	}, nil
+}
+
+func parseSnowflakeSet(value string) map[snowflake.ID]bool {
+	ids := map[snowflake.ID]bool{}
+	for _, part := range strings.Split(value, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		id, err := snowflake.Parse(part)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ignoring invalid premium user id %q: %v\n", part, err)
+			continue
+		}
+		ids[id] = true
+	}
+
+	return ids
 }
 
 func envDefault(name string, fallback string) string {

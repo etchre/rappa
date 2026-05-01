@@ -7,16 +7,16 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 )
 
-func (p *Player) Add(ctx context.Context, guildID snowflake.ID, identifier string) (QueueResult, error) {
-	return p.add(ctx, guildID, identifier, false)
+func (p *Player) Add(ctx context.Context, guildID snowflake.ID, identifier string, options AddOptions) (QueueResult, error) {
+	return p.add(ctx, guildID, identifier, false, options)
 }
 
-func (p *Player) AddNext(ctx context.Context, guildID snowflake.ID, identifier string) (QueueResult, error) {
-	return p.add(ctx, guildID, identifier, true)
+func (p *Player) AddNext(ctx context.Context, guildID snowflake.ID, identifier string, options AddOptions) (QueueResult, error) {
+	return p.add(ctx, guildID, identifier, true, options)
 }
 
-func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier string) (QueueResult, error) {
-	node := p.lavalink.BestNode()
+func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier string, options AddOptions) (QueueResult, error) {
+	node := p.node()
 	if node == nil {
 		return QueueResult{}, fmt.Errorf("no lavalink node is available")
 	}
@@ -30,6 +30,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
+	playback.setPremiumFallbackAllowed(tracks, options.PremiumFallbackAllowed)
 	previousCurrent := playback.current
 	previousQueue := playback.queue
 	wasPlaying := playback.playing
@@ -61,8 +62,8 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 	}, nil
 }
 
-func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier string, next bool) (QueueResult, error) {
-	node := p.lavalink.BestNode()
+func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier string, next bool, options AddOptions) (QueueResult, error) {
+	node := p.node()
 	if node == nil {
 		return QueueResult{}, fmt.Errorf("no lavalink node is available")
 	}
@@ -76,6 +77,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
+	playback.setPremiumFallbackAllowed(tracks, options.PremiumFallbackAllowed)
 	if playback.playing {
 		if next {
 			playback.queue = append(tracks, playback.queue...)

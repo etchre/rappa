@@ -77,7 +77,8 @@ Create a `.env` file next to `compose.yml`:
 ```env
 DISCORD_BOT_TOKEN=your_discord_bot_token
 LAVALINK_PASSWORD=youshallnotpass
-YOUTUBE_REFRESH_TOKEN=
+YOUTUBE_COOKIES_FILE=/absolute/path/to/cookies-youtube-com.txt
+PREMIUM_ALLOWED_USER_IDS=your_discord_user_id
 SYNC_GLOBAL_COMMANDS=false
 CLEAR_GLOBAL_COMMANDS=false
 ```
@@ -85,9 +86,11 @@ CLEAR_GLOBAL_COMMANDS=false
 The default compose stack starts two Lavalink nodes:
 
 - `lavalink`: normal logged-out playback.
-- `lavalink-premium`: OAuth-enabled YouTube playback for future premium fallback support.
+- `lavalink-premium`: cookie-backed yt-dlp playback for premium fallback support.
 
-The bot does not use the premium node yet unless the Go code is updated to select it. Leave `YOUTUBE_REFRESH_TOKEN` empty until you intentionally test OAuth.
+The bot tries normal playback first. If Lavalink reports an account-gated playback failure, it retries the current track through the premium node while keeping the normal YouTube metadata for embeds and queue display.
+
+Premium fallback is only enabled for users listed in `PREMIUM_ALLOWED_USER_IDS`. Use comma-separated Discord user IDs if more than one user should be allowed.
 
 ## First Run
 

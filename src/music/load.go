@@ -11,6 +11,7 @@ import (
 )
 
 const youtubeSearchPrefix = "ytsearch:"
+const premiumSourcePrefix = "rappa-premium:"
 const (
 	collectionKindAlbum    = "album"
 	collectionKindPlaylist = "playlist"
@@ -24,9 +25,12 @@ type playableLoad struct {
 
 func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier string) (playableLoad, error) {
 	originalIdentifier := identifier
-	identifier = playableIdentifier(identifier)
+	identifier = playableIdentifierForNode(node, identifier)
+	debugTrackLoad(node, originalIdentifier, identifier)
+
 	result, err := node.LoadTracks(ctx, identifier)
 	if err != nil {
+		debugTrackLoadError(node, originalIdentifier, err)
 		return playableLoad{}, fmt.Errorf("load tracks: %w", err)
 	}
 
@@ -63,10 +67,12 @@ func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier str
 		}, nil
 
 	case lavalink.LoadTypeEmpty:
+		debugTrackLoadEmpty(node, originalIdentifier, identifier)
 		return playableLoad{}, fmt.Errorf("no tracks found for %q", identifier)
 
 	case lavalink.LoadTypeError:
 		if loadErr, ok := result.Data.(lavalink.Exception); ok {
+			debugLavalinkException("load", nodeName(node), originalIdentifier, loadErr)
 			return playableLoad{}, fmt.Errorf("lavalink load error: %w", loadErr)
 		}
 		return playableLoad{}, fmt.Errorf("lavalink returned an unknown load error")
@@ -74,6 +80,20 @@ func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier str
 	default:
 		return playableLoad{}, fmt.Errorf("unsupported lavalink load type %q", result.LoadType)
 	}
+}
+
+func playableIdentifierForNode(node disgolink.Node, input string) string {
+	input = strings.TrimSpace(input)
+	if strings.HasPrefix(input, premiumSourcePrefix) {
+		return input
+	}
+
+	identifier := playableIdentifier(input)
+	if nodeName(node) == "premium" && isURL(identifier) {
+		return premiumSourcePrefix + identifier
+	}
+
+	return identifier
 }
 
 func playableIdentifier(input string) string {
@@ -99,6 +119,14 @@ func hasSearchPrefix(input string) bool {
 
 func selectSearchResult(tracks lavalink.Search) []lavalink.Track {
 	return []lavalink.Track{tracks[0]}
+}
+
+func originalTrackIdentifier(track lavalink.Track) string {
+	if track.Info.URI != nil && *track.Info.URI != "" {
+		return *track.Info.URI
+	}
+
+	return track.Info.Identifier
 }
 
 func collectionKind(identifier string) string {

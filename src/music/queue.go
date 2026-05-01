@@ -70,7 +70,7 @@ func (p *Player) Queue(guildID snowflake.ID) QueueSnapshot {
 		currentTrack := *playback.current
 		current = &currentTrack
 
-		player := p.lavalink.Player(guildID)
+		player := p.lavalinkPlayer(guildID)
 		position = player.Position()
 		volume = player.Volume()
 	}

@@ -16,6 +16,7 @@ services:
       LAVALINK_PREMIUM_ADDRESS: lavalink-premium:2333
       LAVALINK_PREMIUM_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
       LAVALINK_PREMIUM_SECURE: "false"
+      LAVALINK_PREFERRED_NODE_NAME: local
       SYNC_GLOBAL_COMMANDS: ${SYNC_GLOBAL_COMMANDS:-true}
       CLEAR_GLOBAL_COMMANDS: ${CLEAR_GLOBAL_COMMANDS:-false}
     depends_on:
@@ -37,13 +38,18 @@ services:
     #   - "2333:2333"
 
   lavalink-premium:
-    image: ghcr.io/lavalink-devs/lavalink:4-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.lavalink-premium
     container_name: rappa-lavalink-premium
     restart: unless-stopped
     environment:
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
-      YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN:-}
+      YTDLP_COOKIES_FILE: /config/youtube-cookies.txt
+      YTDLP_EXTRACTOR_ARGS: youtube:player_client=tv
+      YTDLP_JS_RUNTIMES: node
     volumes:
       - ./lavalink/application-premium.yml:/opt/Lavalink/application.yml:ro
+      - ${YOUTUBE_COOKIES_FILE:-./cookies-youtube-com.txt}:/config/youtube-cookies.txt
     expose:
       - "2333"

@@ -17,9 +17,14 @@ type Command struct {
 }
 
 type Context struct {
-	Context context.Context
-	GuildID snowflake.ID
-	Player  *music.Player
+	Context             context.Context
+	GuildID             snowflake.ID
+	Player              *music.Player
+	PremiumAllowedUsers map[snowflake.ID]bool
+}
+
+func (ctx Context) PremiumFallbackAllowed(userID snowflake.ID) bool {
+	return ctx.PremiumAllowedUsers[userID]
 }
 
 type Router struct {

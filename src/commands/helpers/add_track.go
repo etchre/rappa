@@ -57,13 +57,16 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 	time.Sleep(2 * time.Second)
 
 	var result music.QueueResult
+	options := music.AddOptions{
+		PremiumFallbackAllowed: ctx.PremiumFallbackAllowed(event.User().ID),
+	}
 	switch mode {
 	case PlayNow:
-		result, err = ctx.Player.PlayNow(ctx.Context, ctx.GuildID, link)
+		result, err = ctx.Player.PlayNow(ctx.Context, ctx.GuildID, link, options)
 	case AddNext:
-		result, err = ctx.Player.AddNext(ctx.Context, ctx.GuildID, link)
+		result, err = ctx.Player.AddNext(ctx.Context, ctx.GuildID, link, options)
 	default:
-		result, err = ctx.Player.Add(ctx.Context, ctx.GuildID, link)
+		result, err = ctx.Player.Add(ctx.Context, ctx.GuildID, link, options)
 	}
 	if err != nil {
 		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to play link: %v", err))

@@ -1,0 +1,28 @@
+FROM gradle:8.14-jdk17 AS plugin-builder
+
+WORKDIR /plugin
+
+COPY musicPremiumPlugin/settings.gradle.kts musicPremiumPlugin/build.gradle.kts ./
+COPY musicPremiumPlugin/src ./src
+
+RUN gradle build --no-daemon
+
+FROM ghcr.io/lavalink-devs/lavalink:4-alpine
+
+USER root
+
+RUN apk add --no-cache \
+    deno \
+    ffmpeg \
+    nodejs \
+    py3-pip \
+    python3 \
+  && pip3 install --break-system-packages --no-cache-dir yt-dlp yt-dlp-ejs \
+  && printf '%s\n' '--js-runtimes' 'node' > /etc/yt-dlp.conf
+
+RUN mkdir -p /opt/Lavalink/plugins \
+  && chown -R lavalink:lavalink /opt/Lavalink/plugins
+
+COPY --chown=lavalink:lavalink --from=plugin-builder /plugin/build/libs/*.jar /opt/Lavalink/plugins/
+
+USER lavalink
