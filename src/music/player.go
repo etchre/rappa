@@ -22,6 +22,10 @@ type guildPlayback struct {
 	current             *lavalink.Track
 	queue               []lavalink.Track
 	premiumAllowed      map[string]bool
+	requesters          map[string]string
+	requesterIDs        map[string]string
+	allowedUserIDs      map[string]string
+	premiumFailureLog   map[string]bool
 	playing             bool
 	looping             bool
 	premiumFallbackBusy bool
@@ -43,6 +47,9 @@ type QueueResult struct {
 
 type AddOptions struct {
 	PremiumFallbackAllowed bool
+	RequesterName          string
+	RequesterID            string
+	PremiumAllowedUserIDs  string
 }
 
 type QueueSnapshot struct {
@@ -111,19 +118,37 @@ func (p *Player) lavalinkPlayerOnNode(guildID snowflake.ID, node disgolink.Node)
 func (p *Player) playback(guildID snowflake.ID) *guildPlayback {
 	playback := p.guilds[guildID]
 	if playback == nil {
-		playback = &guildPlayback{premiumAllowed: map[string]bool{}}
+		playback = &guildPlayback{
+			premiumAllowed:    map[string]bool{},
+			requesters:        map[string]string{},
+			requesterIDs:      map[string]string{},
+			allowedUserIDs:    map[string]string{},
+			premiumFailureLog: map[string]bool{},
+		}
 		p.guilds[guildID] = playback
 	}
 
 	return playback
 }
 
-func (playback *guildPlayback) setPremiumFallbackAllowed(tracks []lavalink.Track, allowed bool) {
+func (playback *guildPlayback) setTrackRequestContext(tracks []lavalink.Track, options AddOptions) {
 	if playback.premiumAllowed == nil {
 		playback.premiumAllowed = map[string]bool{}
 	}
+	if playback.requesters == nil {
+		playback.requesters = map[string]string{}
+	}
+	if playback.requesterIDs == nil {
+		playback.requesterIDs = map[string]string{}
+	}
+	if playback.allowedUserIDs == nil {
+		playback.allowedUserIDs = map[string]string{}
+	}
 	for _, track := range tracks {
-		playback.premiumAllowed[track.Encoded] = allowed
+		playback.premiumAllowed[track.Encoded] = options.PremiumFallbackAllowed
+		playback.requesters[track.Encoded] = options.RequesterName
+		playback.requesterIDs[track.Encoded] = options.RequesterID
+		playback.allowedUserIDs[track.Encoded] = options.PremiumAllowedUserIDs
 	}
 }
 
@@ -132,4 +157,31 @@ func (playback *guildPlayback) premiumFallbackAllowedFor(track lavalink.Track) b
 		return false
 	}
 	return playback.premiumAllowed[track.Encoded]
+}
+
+func (playback *guildPlayback) requesterFor(track lavalink.Track) string {
+	if playback.requesters == nil {
+		return "unknown user"
+	}
+	if requester := playback.requesters[track.Encoded]; requester != "" {
+		return requester
+	}
+	return "unknown user"
+}
+
+func (playback *guildPlayback) requesterIDFor(track lavalink.Track) string {
+	if playback.requesterIDs == nil {
+		return "unknown"
+	}
+	if requesterID := playback.requesterIDs[track.Encoded]; requesterID != "" {
+		return requesterID
+	}
+	return "unknown"
+}
+
+func (playback *guildPlayback) allowedUserIDsFor(track lavalink.Track) string {
+	if playback.allowedUserIDs == nil {
+		return ""
+	}
+	return playback.allowedUserIDs[track.Encoded]
 }

@@ -59,6 +59,9 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 	var result music.QueueResult
 	options := music.AddOptions{
 		PremiumFallbackAllowed: ctx.PremiumFallbackAllowed(event.User().ID),
+		RequesterName:          requesterName(event),
+		RequesterID:            event.User().ID.String(),
+		PremiumAllowedUserIDs:  ctx.PremiumAllowedUserIDs,
 	}
 	switch mode {
 	case PlayNow:
@@ -92,4 +95,12 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 	}
 
 	commandrouter.UpdateResponse(event, fmt.Sprintf("Now playing: %s", title))
+}
+
+func requesterName(event *events.ApplicationCommandInteractionCreate) string {
+	if member := event.Member(); member != nil {
+		return member.EffectiveName()
+	}
+
+	return event.User().EffectiveName()
 }

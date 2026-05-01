@@ -30,7 +30,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
-	playback.setPremiumFallbackAllowed(tracks, options.PremiumFallbackAllowed)
+	playback.setTrackRequestContext(tracks, options)
 	previousCurrent := playback.current
 	previousQueue := playback.queue
 	wasPlaying := playback.playing
@@ -77,7 +77,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
-	playback.setPremiumFallbackAllowed(tracks, options.PremiumFallbackAllowed)
+	playback.setTrackRequestContext(tracks, options)
 	if playback.playing {
 		if next {
 			playback.queue = append(tracks, playback.queue...)

@@ -51,19 +51,19 @@ func debugTrackPlayError(player disgolink.Player, track lavalink.Track, err erro
 }
 
 func debugLavalinkException(stage string, nodeName string, subject string, exception lavalink.Exception) {
+	if looksAccountGated(exception.Message, exception.Cause, exception.CauseStackTrace) {
+		fmt.Printf("[lavalink-debug] %s failed on node=%q, likely a premium track: %s\n", stage, nodeName, subject)
+		return
+	}
+
 	fmt.Printf(
-		"[lavalink-debug] %s exception node=%q subject=%q severity=%q message=%q cause=%q\n",
+		"[lavalink-debug] %s failed on node=%q subject=%q severity=%q message=%q\n",
 		stage,
 		nodeName,
 		subject,
 		exception.Severity,
 		exception.Message,
-		exception.Cause,
 	)
-
-	if looksAccountGated(exception.Message, exception.Cause, exception.CauseStackTrace) {
-		fmt.Printf("[lavalink-debug] likely account/premium-gated track subject=%q\n", subject)
-	}
 }
 
 func nodeName(node disgolink.Node) string {

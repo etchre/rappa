@@ -11,13 +11,14 @@ import (
 )
 
 type config struct {
-	token               string
-	clearGlobalCommands bool
-	syncGlobalCommands  bool
-	lavalinkNodes       []disgolink.NodeConfig
-	preferredNodeName   string
-	premiumNodeName     string
-	premiumAllowedUsers map[snowflake.ID]bool
+	token                 string
+	clearGlobalCommands   bool
+	syncGlobalCommands    bool
+	lavalinkNodes         []disgolink.NodeConfig
+	preferredNodeName     string
+	premiumNodeName       string
+	premiumAllowedUserIDs string
+	premiumAllowedUsers   map[snowflake.ID]bool
 }
 
 func loadConfig() (config, error) {
@@ -46,12 +47,13 @@ func loadConfig() (config, error) {
 	}
 
 	return config{
-		token:               token,
-		clearGlobalCommands: clearGlobalCommands,
-		syncGlobalCommands:  syncGlobalCommands,
-		preferredNodeName:   envDefault("LAVALINK_PREFERRED_NODE_NAME", envDefault("LAVALINK_NODE_NAME", "local")),
-		premiumNodeName:     envDefault("LAVALINK_PREMIUM_NODE_NAME", "premium"),
-		premiumAllowedUsers: parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),
+		token:                 token,
+		clearGlobalCommands:   clearGlobalCommands,
+		syncGlobalCommands:    syncGlobalCommands,
+		premiumAllowedUserIDs: os.Getenv("PREMIUM_ALLOWED_USER_IDS"),
+		preferredNodeName:     envDefault("LAVALINK_PREFERRED_NODE_NAME", envDefault("LAVALINK_NODE_NAME", "local")),
+		premiumNodeName:       envDefault("LAVALINK_PREMIUM_NODE_NAME", "premium"),
+		premiumAllowedUsers:   parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),
 		lavalinkNodes: []disgolink.NodeConfig{
 			{
 				Name:     envDefault("LAVALINK_NODE_NAME", "local"),

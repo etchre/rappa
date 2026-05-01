@@ -17,10 +17,11 @@ type Command struct {
 }
 
 type Context struct {
-	Context             context.Context
-	GuildID             snowflake.ID
-	Player              *music.Player
-	PremiumAllowedUsers map[snowflake.ID]bool
+	Context               context.Context
+	GuildID               snowflake.ID
+	Player                *music.Player
+	PremiumAllowedUsers   map[snowflake.ID]bool
+	PremiumAllowedUserIDs string
 }
 
 func (ctx Context) PremiumFallbackAllowed(userID snowflake.ID) bool {

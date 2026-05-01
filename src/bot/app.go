@@ -56,8 +56,9 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 	)
 	app.player = music.NewPlayer(app.lavalink, cfg.preferredNodeName, cfg.premiumNodeName)
 	app.router = commandrouter.New(commandrouter.Context{
-		Player:              app.player,
-		PremiumAllowedUsers: cfg.premiumAllowedUsers,
+		Player:                app.player,
+		PremiumAllowedUsers:   cfg.premiumAllowedUsers,
+		PremiumAllowedUserIDs: cfg.premiumAllowedUserIDs,
 	}, commands.All)
 
 	return app, nil
