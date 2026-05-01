@@ -2,6 +2,9 @@ package bot
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"time"
 
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/snowflake/v2"
@@ -13,13 +16,15 @@ import (
 func (app *app) onVoiceStateUpdate(ctx context.Context) func(event *events.GuildVoiceStateUpdate) {
 	return func(event *events.GuildVoiceStateUpdate) {
 		if event.VoiceState.UserID != app.lavalink.UserID() {
-			app.leaveIfAlone(ctx, event.VoiceState.GuildID)
+			app.checkLeftAloneSoon(ctx, event.VoiceState.GuildID)
 			return
 		}
 
+		app.setBotVoiceChannel(event.VoiceState.GuildID, event.VoiceState.ChannelID)
 		app.player.OnVoiceStateUpdate(ctx, event.VoiceState.GuildID, event.VoiceState.ChannelID, event.VoiceState.SessionID)
 		if event.VoiceState.ChannelID == nil {
 			app.idle.cancel(event.VoiceState.GuildID)
+			return
 		}
 	}
 }
@@ -36,7 +41,21 @@ func (app *app) onVoiceServerUpdate(ctx context.Context) func(event *events.Voic
 
 func (app *app) onGuildsReady(_ context.Context) func(event *events.GuildsReady) {
 	return func(event *events.GuildsReady) {
-		app.cleanup.Do(app.clearGuildCommands)
+		app.clearGuildCommands()
+	}
+}
+
+func (app *app) onGuildReady(_ context.Context) func(event *events.GuildReady) {
+	return func(event *events.GuildReady) {
+		if !app.config.clearGuildCommands {
+			return
+		}
+
+		if _, err := app.discord.Rest.SetGuildCommands(app.discord.ApplicationID, event.GuildID, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "clear guild commands failed guild_id=%s: %v\n", event.GuildID, err)
+			return
+		}
+		fmt.Printf("Cleared guild commands for guild_id=%s.\n", event.GuildID)
 	}
 }
 
@@ -64,12 +83,11 @@ func (app *app) onComponentInteraction(ctx context.Context) func(event *events.C
 }
 
 func (app *app) leaveIfAlone(ctx context.Context, guildID snowflake.ID) {
-	botVoiceState, ok := app.discord.Caches.VoiceState(guildID, app.lavalink.UserID())
-	if !ok || botVoiceState.ChannelID == nil {
+	botChannelID, ok := app.botVoiceChannel(guildID)
+	if !ok {
 		return
 	}
 
-	botChannelID := *botVoiceState.ChannelID
 	for voiceState := range app.discord.Caches.VoiceStates(guildID) {
 		if voiceState.UserID == app.lavalink.UserID() || voiceState.ChannelID == nil {
 			continue
@@ -80,4 +98,35 @@ func (app *app) leaveIfAlone(ctx context.Context, guildID snowflake.ID) {
 	}
 
 	go app.disconnectFromVoice(ctx, guildID, "being left alone")
+}
+
+func (app *app) checkLeftAloneSoon(ctx context.Context, guildID snowflake.ID) {
+	go func() {
+		time.Sleep(750 * time.Millisecond)
+		app.leaveIfAlone(ctx, guildID)
+	}()
+}
+
+func (app *app) setBotVoiceChannel(guildID snowflake.ID, channelID *snowflake.ID) {
+	app.voiceMu.Lock()
+	defer app.voiceMu.Unlock()
+
+	if channelID == nil {
+		delete(app.voice, guildID)
+		return
+	}
+
+	app.voice[guildID] = *channelID
+}
+
+func (app *app) botVoiceChannel(guildID snowflake.ID) (snowflake.ID, bool) {
+	if botVoiceState, ok := app.discord.Caches.VoiceState(guildID, app.lavalink.UserID()); ok && botVoiceState.ChannelID != nil {
+		return *botVoiceState.ChannelID, true
+	}
+
+	app.voiceMu.Lock()
+	defer app.voiceMu.Unlock()
+
+	channelID, ok := app.voice[guildID]
+	return channelID, ok
 }

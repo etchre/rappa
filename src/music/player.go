@@ -45,6 +45,7 @@ type QueueResult struct {
 	Queued         bool
 	Position       int
 	Added          int
+	Shuffled       bool
 	CollectionName string
 	CollectionKind string
 }

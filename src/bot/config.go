@@ -15,7 +15,9 @@ type config struct {
 	token                 string
 	clearGlobalCommands   bool
 	clearGuildCommands    bool
+	clearGuildCommandIDs  []snowflake.ID
 	syncGlobalCommands    bool
+	jokeCommands          bool
 	lavalink              disgolink.NodeConfig
 	premiumAllowedUserIDs string
 	premiumAllowedUsers   map[snowflake.ID]bool
@@ -48,6 +50,11 @@ func loadConfig() (config, error) {
 		return config{}, err
 	}
 
+	jokeCommands, err := envBool("JOKE_COMMANDS", false)
+	if err != nil {
+		return config{}, err
+	}
+
 	idleDisconnectTimeout, err := envDuration("IDLE_DISCONNECT_TIMEOUT", 5*time.Minute)
 	if err != nil {
 		return config{}, err
@@ -57,7 +64,9 @@ func loadConfig() (config, error) {
 		token:                 token,
 		clearGlobalCommands:   clearGlobalCommands,
 		clearGuildCommands:    clearGuildCommands,
+		clearGuildCommandIDs:  parseSnowflakeList(os.Getenv("CLEAR_GUILD_COMMAND_IDS")),
 		syncGlobalCommands:    syncGlobalCommands,
+		jokeCommands:          jokeCommands,
 		premiumAllowedUserIDs: os.Getenv("PREMIUM_ALLOWED_USER_IDS"),
 		premiumAllowedUsers:   parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),
 		idleDisconnectTimeout: idleDisconnectTimeout,
@@ -72,6 +81,15 @@ func loadConfig() (config, error) {
 
 func parseSnowflakeSet(value string) map[snowflake.ID]bool {
 	ids := map[snowflake.ID]bool{}
+	for _, id := range parseSnowflakeList(value) {
+		ids[id] = true
+	}
+
+	return ids
+}
+
+func parseSnowflakeList(value string) []snowflake.ID {
+	var ids []snowflake.ID
 	for _, part := range strings.Split(value, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
@@ -80,10 +98,10 @@ func parseSnowflakeSet(value string) map[snowflake.ID]bool {
 
 		id, err := snowflake.Parse(part)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ignoring invalid premium user id %q: %v\n", part, err)
+			fmt.Fprintf(os.Stderr, "ignoring invalid snowflake id %q: %v\n", part, err)
 			continue
 		}
-		ids[id] = true
+		ids = append(ids, id)
 	}
 
 	return ids

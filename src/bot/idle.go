@@ -88,5 +88,6 @@ func (app *app) disconnectFromVoice(ctx context.Context, guildID snowflake.ID, r
 	if err := app.discord.UpdateVoiceState(ctx, guildID, nil, false, false); err != nil {
 		fmt.Fprintf(os.Stderr, "voice disconnect failed: %v\n", err)
 	}
+	app.setBotVoiceChannel(guildID, nil)
 	app.idle.cancel(guildID)
 }

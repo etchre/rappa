@@ -63,6 +63,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		Track:          item.Track,
 		Tracks:         tracks,
 		Added:          len(tracks),
+		Shuffled:       options.Shuffle && len(tracks) > 1,
 		CollectionName: loaded.CollectionName,
 		CollectionKind: loaded.CollectionKind,
 	}, nil
@@ -107,6 +108,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 			Queued:         true,
 			Position:       position,
 			Added:          len(tracks),
+			Shuffled:       options.Shuffle && len(tracks) > 1,
 			CollectionName: loaded.CollectionName,
 			CollectionKind: loaded.CollectionKind,
 		}, nil
@@ -134,6 +136,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		Track:          item.Track,
 		Tracks:         tracks,
 		Added:          len(tracks),
+		Shuffled:       options.Shuffle && len(tracks) > 1,
 		CollectionName: loaded.CollectionName,
 		CollectionKind: loaded.CollectionKind,
 	}, nil

@@ -28,13 +28,15 @@ type app struct {
 	router   commandrouter.Router
 	channels *commandrouter.StatusChannels
 	idle     *idleDisconnects
-	cleanup  sync.Once
+	voiceMu  sync.Mutex
+	voice    map[snowflake.ID]snowflake.ID
 }
 
 func newApp(ctx context.Context, cfg config) (*app, error) {
 	app := &app{
 		config:   cfg,
 		channels: commandrouter.NewStatusChannels(),
+		voice:    map[snowflake.ID]snowflake.ID{},
 	}
 
 	client, err := disgo.New(
@@ -50,6 +52,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		disgobot.WithEventListenerFunc(app.onApplicationCommand(ctx)),
 		disgobot.WithEventListenerFunc(app.onComponentInteraction(ctx)),
 		disgobot.WithEventListenerFunc(app.onGuildsReady(ctx)),
+		disgobot.WithEventListenerFunc(app.onGuildReady(ctx)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create discord client: %w", err)
@@ -76,7 +79,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		StatusChannels:        app.channels,
 		PremiumAllowedUsers:   cfg.premiumAllowedUsers,
 		PremiumAllowedUserIDs: cfg.premiumAllowedUserIDs,
-	}, commands.All)
+	}, commands.All(cfg.jokeCommands))
 
 	return app, nil
 }
@@ -105,10 +108,18 @@ func (app *app) clearGuildCommands() {
 		return
 	}
 
-	cleared := 0
+	guildIDs := map[snowflake.ID]bool{}
+	for _, guildID := range app.config.clearGuildCommandIDs {
+		guildIDs[guildID] = true
+	}
 	for guild := range app.discord.Caches.Guilds() {
-		if _, err := app.discord.Rest.SetGuildCommands(app.discord.ApplicationID, guild.ID, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "clear guild commands failed guild_id=%s: %v\n", guild.ID, err)
+		guildIDs[guild.ID] = true
+	}
+
+	cleared := 0
+	for guildID := range guildIDs {
+		if _, err := app.discord.Rest.SetGuildCommands(app.discord.ApplicationID, guildID, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "clear guild commands failed guild_id=%s: %v\n", guildID, err)
 			continue
 		}
 		cleared++

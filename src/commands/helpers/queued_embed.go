@@ -11,7 +11,7 @@ import (
 
 func QueuedEmbed(result music.QueueResult, requester string) (string, discord.Embed) {
 	if result.Added > 1 {
-		return collectionQueuedContent(result.CollectionKind), collectionQueuedEmbed(result, requester)
+		return collectionQueuedContent(result.CollectionKind, result.Shuffled), collectionQueuedEmbed(result, requester)
 	}
 
 	return "Song queued!", songQueuedEmbed(result.Track, requester)
@@ -71,10 +71,16 @@ func collectionTrackPreview(tracks []lavalink.Track) string {
 	return preview
 }
 
-func collectionQueuedContent(kind string) string {
+func collectionQueuedContent(kind string, shuffled bool) string {
 	if kind == "album" {
+		if shuffled {
+			return "Album queued and shuffled!"
+		}
 		return "Album queued!"
 	}
 
+	if shuffled {
+		return "Playlist queued and shuffled!"
+	}
 	return "Playlist queued!"
 }
