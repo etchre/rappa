@@ -31,6 +31,7 @@ type app struct {
 	idle     *idleDisconnects
 	voiceMu  sync.Mutex
 	voice    map[snowflake.ID]snowflake.ID
+	users    map[snowflake.ID]map[snowflake.ID]snowflake.ID
 }
 
 func newApp(ctx context.Context, cfg config) (*app, error) {
@@ -38,6 +39,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		config:   cfg,
 		channels: commandrouter.NewStatusChannels(),
 		voice:    map[snowflake.ID]snowflake.ID{},
+		users:    map[snowflake.ID]map[snowflake.ID]snowflake.ID{},
 	}
 
 	client, err := disgo.New(
@@ -81,6 +83,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		StatusChannels:        app.channels,
 		PremiumAllowedUsers:   cfg.premiumAllowedUsers,
 		PremiumAllowedUserIDs: cfg.premiumAllowedUserIDs,
+		RecordVoiceState:      app.setUserVoiceChannel,
 	}, commands.All(cfg.jokeCommands))
 
 	return app, nil

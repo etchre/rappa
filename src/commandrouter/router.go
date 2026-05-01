@@ -23,10 +23,19 @@ type Context struct {
 	StatusChannels        *StatusChannels
 	PremiumAllowedUsers   map[snowflake.ID]bool
 	PremiumAllowedUserIDs string
+	RecordVoiceState      func(guildID snowflake.ID, userID snowflake.ID, channelID snowflake.ID)
 }
 
 func (ctx Context) PremiumFallbackAllowed(userID snowflake.ID) bool {
 	return ctx.PremiumAllowedUsers[userID]
+}
+
+func (ctx Context) NoteVoiceState(userID snowflake.ID, channelID snowflake.ID) {
+	if ctx.RecordVoiceState == nil {
+		return
+	}
+
+	ctx.RecordVoiceState(ctx.GuildID, userID, channelID)
 }
 
 type Router struct {

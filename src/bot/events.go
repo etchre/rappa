@@ -15,6 +15,8 @@ import (
 
 func (app *app) onVoiceStateUpdate(ctx context.Context) func(event *events.GuildVoiceStateUpdate) {
 	return func(event *events.GuildVoiceStateUpdate) {
+		app.recordVoiceState(event.VoiceState.GuildID, event.VoiceState.UserID, event.VoiceState.ChannelID)
+
 		if event.VoiceState.UserID != app.lavalink.UserID() {
 			app.checkLeftAloneSoon(ctx, event.VoiceState.GuildID)
 			return
@@ -97,6 +99,10 @@ func (app *app) leaveIfAlone(ctx context.Context, guildID snowflake.ID) {
 		return
 	}
 
+	if app.hasTrackedUserInChannel(guildID, botChannelID) {
+		return
+	}
+
 	for voiceState := range app.discord.Caches.VoiceStates(guildID) {
 		if voiceState.UserID == app.lavalink.UserID() || voiceState.ChannelID == nil {
 			continue
@@ -126,6 +132,45 @@ func (app *app) setBotVoiceChannel(guildID snowflake.ID, channelID *snowflake.ID
 	}
 
 	app.voice[guildID] = *channelID
+}
+
+func (app *app) setUserVoiceChannel(guildID snowflake.ID, userID snowflake.ID, channelID snowflake.ID) {
+	app.recordVoiceState(guildID, userID, &channelID)
+}
+
+func (app *app) recordVoiceState(guildID snowflake.ID, userID snowflake.ID, channelID *snowflake.ID) {
+	app.voiceMu.Lock()
+	defer app.voiceMu.Unlock()
+
+	if channelID == nil {
+		if users := app.users[guildID]; users != nil {
+			delete(users, userID)
+			if len(users) == 0 {
+				delete(app.users, guildID)
+			}
+		}
+		return
+	}
+
+	users := app.users[guildID]
+	if users == nil {
+		users = map[snowflake.ID]snowflake.ID{}
+		app.users[guildID] = users
+	}
+	users[userID] = *channelID
+}
+
+func (app *app) hasTrackedUserInChannel(guildID snowflake.ID, channelID snowflake.ID) bool {
+	app.voiceMu.Lock()
+	defer app.voiceMu.Unlock()
+
+	for userID, userChannelID := range app.users[guildID] {
+		if userID != app.lavalink.UserID() && userChannelID == channelID {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (app *app) botVoiceChannel(guildID snowflake.ID) (snowflake.ID, bool) {

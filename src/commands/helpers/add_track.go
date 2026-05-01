@@ -52,6 +52,7 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		commandrouter.UpdateResponse(event, err.Error())
 		return
 	}
+	ctx.NoteVoiceState(event.User().ID, voiceChannelID)
 
 	if err := event.Client().UpdateVoiceState(ctx.Context, ctx.GuildID, &voiceChannelID, false, true); err != nil {
 		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to join voice: %v", err))
