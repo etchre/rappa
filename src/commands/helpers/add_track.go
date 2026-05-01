@@ -61,7 +61,10 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		ctx.StatusChannels.SetFallbackIfUnset(ctx.GuildID, event.Channel().ID())
 	}
 
-	time.Sleep(2 * time.Second)
+	if err := ctx.Player.WaitUntilVoiceReady(ctx.Context, ctx.GuildID, 10*time.Second); err != nil {
+		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to connect voice to Lavalink: %v", err))
+		return
+	}
 
 	var result music.QueueResult
 	options := music.AddOptions{

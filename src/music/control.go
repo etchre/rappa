@@ -98,7 +98,16 @@ func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Play
 		return true
 	}
 	if playback.current == nil || playback.current.Track.Encoded != track.Encoded {
+		var currentTitle string
+		if playback.current != nil {
+			currentTitle = trackTitle(playback.current.Track)
+		}
 		p.mu.Unlock()
+		fmt.Printf(
+			"Ignored stale playback failure for %s; current track is %q\n",
+			trackTitle(track),
+			currentTitle,
+		)
 		return false
 	}
 	if !playback.current.PremiumFailureLogged {

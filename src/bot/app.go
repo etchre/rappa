@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/disgoorg/disgo"
 	disgobot "github.com/disgoorg/disgo/bot"
@@ -86,8 +87,25 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 }
 
 func (app *app) connectLavalink(ctx context.Context) error {
-	_, err := app.lavalink.AddNode(ctx, app.config.lavalink)
-	return err
+	node, err := app.lavalink.AddNode(ctx, app.config.lavalink)
+	if err != nil {
+		return err
+	}
+
+	return app.warmLavalink(ctx, node)
+}
+
+func (app *app) warmLavalink(ctx context.Context, node disgolink.Node) error {
+	warmupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	info, err := node.Info(warmupCtx)
+	if err != nil {
+		return fmt.Errorf("warm lavalink node: %w", err)
+	}
+
+	fmt.Printf("Lavalink node %q is ready: version=%s plugins=%d\n", node.Config().Name, info.Version.Semver, len(info.Plugins))
+	return nil
 }
 
 func (app *app) registerCommands() error {
