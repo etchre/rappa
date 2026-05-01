@@ -46,6 +46,7 @@ func (p *Player) ShuffleAll(ctx context.Context, guildID snowflake.ID) (lavalink
 	playback.current = &next
 	playback.queue = queue
 	playback.playing = true
+	playback.paused = false
 	playback.looping = false
 	p.mu.Unlock()
 

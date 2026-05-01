@@ -12,8 +12,10 @@ var All = map[string]commandrouter.Command{
 	"diddy":        Diddy,
 	"leave":        Leave,
 	"loop":         Loop,
+	"mae":          Mae,
 	"movenext":     MoveNext,
 	"nowplaying":   NowPlaying,
+	"pause":        Pause,
 	"play":         Play,
 	"playnext":     PlayNext,
 	"playrightnow": PlayRightNow,
@@ -25,7 +27,7 @@ var All = map[string]commandrouter.Command{
 	"shuffleall":   ShuffleAll,
 	"skip":         Skip,
 	"stop":         Stop,
-	"mae":          Mae,
+	"unpause":      Unpause,
 }
 
 func HandleComponent(ctx commandrouter.Context, event *events.ComponentInteractionCreate) {

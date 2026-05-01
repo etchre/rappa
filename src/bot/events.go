@@ -34,6 +34,12 @@ func (app *app) onVoiceServerUpdate(ctx context.Context) func(event *events.Voic
 	}
 }
 
+func (app *app) onGuildsReady(_ context.Context) func(event *events.GuildsReady) {
+	return func(event *events.GuildsReady) {
+		app.cleanup.Do(app.clearGuildCommands)
+	}
+}
+
 func (app *app) onApplicationCommand(ctx context.Context) func(event *events.ApplicationCommandInteractionCreate) {
 	return func(event *events.ApplicationCommandInteractionCreate) {
 		go app.router.Handle(ctx, event)

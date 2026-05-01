@@ -18,6 +18,7 @@ func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, er
 		wasPlaying := playback.playing
 		playback.playing = false
 		playback.current = nil
+		playback.paused = false
 		p.mu.Unlock()
 
 		if wasPlaying {
@@ -34,6 +35,7 @@ func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, er
 	playback.queue = playback.queue[1:]
 	playback.current = &next
 	playback.playing = true
+	playback.paused = false
 	p.mu.Unlock()
 
 	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
@@ -51,6 +53,7 @@ func (p *Player) Stop(ctx context.Context, guildID snowflake.ID) error {
 	playback.playing = false
 	playback.current = nil
 	playback.queue = nil
+	playback.paused = false
 	playback.looping = false
 	p.mu.Unlock()
 
@@ -169,6 +172,7 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	if len(playback.queue) == 0 {
 		playback.playing = false
 		playback.current = nil
+		playback.paused = false
 		playback.looping = false
 		p.mu.Unlock()
 		p.notifyPlaybackIdle(ctx, guildID)
@@ -178,6 +182,7 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	next := playback.queue[0]
 	playback.queue = playback.queue[1:]
 	playback.current = &next
+	playback.paused = false
 	p.mu.Unlock()
 
 	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
@@ -189,7 +194,7 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 
 func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lavalink.Track) error {
 	player := p.lavalinkPlayer(guildID)
-	if err := player.Update(ctx, lavalink.WithTrack(track)); err != nil {
+	if err := player.Update(ctx, lavalink.WithTrack(track), lavalink.WithPaused(false)); err != nil {
 		debugTrackPlayError(player, track, err)
 		return fmt.Errorf("play track: %w", err)
 	}
@@ -236,6 +241,7 @@ func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, fa
 	if playback.current != nil && playback.current.Track.Encoded == failedTrack.Encoded {
 		playback.current.Track = premiumTrack
 		playback.playing = true
+		playback.paused = false
 		shouldPlay = true
 	}
 	p.mu.Unlock()
@@ -258,6 +264,7 @@ func (p *Player) advanceAfterFailedTrack(ctx context.Context, guildID snowflake.
 	if len(playback.queue) == 0 {
 		playback.current = nil
 		playback.playing = false
+		playback.paused = false
 		p.mu.Unlock()
 		p.notifyTrackFailure(ctx, guildID, failedTrack)
 		p.notifyPlaybackIdle(ctx, guildID)
@@ -268,6 +275,7 @@ func (p *Player) advanceAfterFailedTrack(ctx context.Context, guildID snowflake.
 	playback.queue = playback.queue[1:]
 	playback.current = &next
 	playback.playing = true
+	playback.paused = false
 	p.mu.Unlock()
 
 	p.notifyTrackFailure(ctx, guildID, failedTrack)

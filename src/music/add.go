@@ -37,10 +37,12 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 	previousCurrent := playback.current
 	previousQueue := playback.queue
 	wasPlaying := playback.playing
+	wasPaused := playback.paused
 	wasLooping := playback.looping
 	playback.playing = true
 	playback.current = &item
 	playback.queue = append(items[1:], playback.queue...)
+	playback.paused = false
 	playback.looping = false
 	p.mu.Unlock()
 
@@ -50,6 +52,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		playback.playing = wasPlaying
 		playback.current = previousCurrent
 		playback.queue = previousQueue
+		playback.paused = wasPaused
 		playback.looping = wasLooping
 		p.mu.Unlock()
 
@@ -112,6 +115,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 	playback.playing = true
 	playback.current = &item
 	playback.queue = append(playback.queue, items[1:]...)
+	playback.paused = false
 	p.mu.Unlock()
 
 	if err := p.playTrack(ctx, guildID, item.Track); err != nil {
@@ -120,6 +124,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		playback.playing = false
 		playback.current = nil
 		playback.queue = previousQueue
+		playback.paused = false
 		p.mu.Unlock()
 
 		return QueueResult{}, err

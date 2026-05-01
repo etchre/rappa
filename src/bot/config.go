@@ -14,6 +14,7 @@ import (
 type config struct {
 	token                 string
 	clearGlobalCommands   bool
+	clearGuildCommands    bool
 	syncGlobalCommands    bool
 	lavalink              disgolink.NodeConfig
 	premiumAllowedUserIDs string
@@ -37,6 +38,11 @@ func loadConfig() (config, error) {
 		return config{}, err
 	}
 
+	clearGuildCommands, err := envBool("CLEAR_GUILD_COMMANDS", clearGlobalCommands)
+	if err != nil {
+		return config{}, err
+	}
+
 	syncGlobalCommands, err := envBool("SYNC_GLOBAL_COMMANDS", false)
 	if err != nil {
 		return config{}, err
@@ -50,6 +56,7 @@ func loadConfig() (config, error) {
 	return config{
 		token:                 token,
 		clearGlobalCommands:   clearGlobalCommands,
+		clearGuildCommands:    clearGuildCommands,
 		syncGlobalCommands:    syncGlobalCommands,
 		premiumAllowedUserIDs: os.Getenv("PREMIUM_ALLOWED_USER_IDS"),
 		premiumAllowedUsers:   parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),

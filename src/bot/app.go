@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/disgoorg/disgo"
 	disgobot "github.com/disgoorg/disgo/bot"
@@ -27,6 +28,7 @@ type app struct {
 	router   commandrouter.Router
 	channels *commandrouter.StatusChannels
 	idle     *idleDisconnects
+	cleanup  sync.Once
 }
 
 func newApp(ctx context.Context, cfg config) (*app, error) {
@@ -47,6 +49,7 @@ func newApp(ctx context.Context, cfg config) (*app, error) {
 		disgobot.WithEventListenerFunc(app.onVoiceServerUpdate(ctx)),
 		disgobot.WithEventListenerFunc(app.onApplicationCommand(ctx)),
 		disgobot.WithEventListenerFunc(app.onComponentInteraction(ctx)),
+		disgobot.WithEventListenerFunc(app.onGuildsReady(ctx)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create discord client: %w", err)
@@ -95,6 +98,23 @@ func (app *app) registerCommands() error {
 
 	_, err := app.discord.Rest.SetGlobalCommands(app.discord.ApplicationID, app.router.Definitions())
 	return err
+}
+
+func (app *app) clearGuildCommands() {
+	if !app.config.clearGuildCommands {
+		return
+	}
+
+	cleared := 0
+	for guild := range app.discord.Caches.Guilds() {
+		if _, err := app.discord.Rest.SetGuildCommands(app.discord.ApplicationID, guild.ID, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "clear guild commands failed guild_id=%s: %v\n", guild.ID, err)
+			continue
+		}
+		cleared++
+	}
+
+	fmt.Printf("Cleared guild commands for %d guild(s).\n", cleared)
 }
 
 func (app *app) warmDiscordRest() {
