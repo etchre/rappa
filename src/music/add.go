@@ -26,22 +26,22 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		return QueueResult{}, err
 	}
 	tracks := loaded.Tracks
-	track := tracks[0]
+	items := queuedTracks(tracks, options)
+	item := items[0]
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
-	playback.setTrackRequestContext(tracks, options)
 	previousCurrent := playback.current
 	previousQueue := playback.queue
 	wasPlaying := playback.playing
 	wasLooping := playback.looping
 	playback.playing = true
-	playback.current = &track
-	playback.queue = append(tracks[1:], playback.queue...)
+	playback.current = &item
+	playback.queue = append(items[1:], playback.queue...)
 	playback.looping = false
 	p.mu.Unlock()
 
-	if err := p.playTrack(ctx, guildID, track); err != nil {
+	if err := p.playTrack(ctx, guildID, item.Track); err != nil {
 		p.mu.Lock()
 		playback := p.playback(guildID)
 		playback.playing = wasPlaying
@@ -54,7 +54,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 	}
 
 	return QueueResult{
-		Track:          track,
+		Track:          item.Track,
 		Tracks:         tracks,
 		Added:          len(tracks),
 		CollectionName: loaded.CollectionName,
@@ -73,16 +73,16 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		return QueueResult{}, err
 	}
 	tracks := loaded.Tracks
-	track := tracks[0]
+	items := queuedTracks(tracks, options)
+	item := items[0]
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
-	playback.setTrackRequestContext(tracks, options)
 	if playback.playing {
 		if next {
-			playback.queue = append(tracks, playback.queue...)
+			playback.queue = append(items, playback.queue...)
 		} else {
-			playback.queue = append(playback.queue, tracks...)
+			playback.queue = append(playback.queue, items...)
 		}
 		position := len(playback.queue)
 		if next {
@@ -93,7 +93,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		p.mu.Unlock()
 
 		return QueueResult{
-			Track:          track,
+			Track:          item.Track,
 			Tracks:         tracks,
 			Queued:         true,
 			Position:       position,
@@ -104,11 +104,11 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 	}
 	previousQueue := playback.queue
 	playback.playing = true
-	playback.current = &track
-	playback.queue = append(playback.queue, tracks[1:]...)
+	playback.current = &item
+	playback.queue = append(playback.queue, items[1:]...)
 	p.mu.Unlock()
 
-	if err := p.playTrack(ctx, guildID, track); err != nil {
+	if err := p.playTrack(ctx, guildID, item.Track); err != nil {
 		p.mu.Lock()
 		playback := p.playback(guildID)
 		playback.playing = false
@@ -120,7 +120,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 	}
 
 	return QueueResult{
-		Track:          track,
+		Track:          item.Track,
 		Tracks:         tracks,
 		Added:          len(tracks),
 		CollectionName: loaded.CollectionName,

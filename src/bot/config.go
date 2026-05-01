@@ -14,9 +14,7 @@ type config struct {
 	token                 string
 	clearGlobalCommands   bool
 	syncGlobalCommands    bool
-	lavalinkNodes         []disgolink.NodeConfig
-	preferredNodeName     string
-	premiumNodeName       string
+	lavalink              disgolink.NodeConfig
 	premiumAllowedUserIDs string
 	premiumAllowedUsers   map[snowflake.ID]bool
 }
@@ -28,10 +26,6 @@ func loadConfig() (config, error) {
 	}
 
 	lavalinkSecure, err := envBool("LAVALINK_SECURE", false)
-	if err != nil {
-		return config{}, err
-	}
-	lavalinkPremiumSecure, err := envBool("LAVALINK_PREMIUM_SECURE", false)
 	if err != nil {
 		return config{}, err
 	}
@@ -51,22 +45,12 @@ func loadConfig() (config, error) {
 		clearGlobalCommands:   clearGlobalCommands,
 		syncGlobalCommands:    syncGlobalCommands,
 		premiumAllowedUserIDs: os.Getenv("PREMIUM_ALLOWED_USER_IDS"),
-		preferredNodeName:     envDefault("LAVALINK_PREFERRED_NODE_NAME", envDefault("LAVALINK_NODE_NAME", "local")),
-		premiumNodeName:       envDefault("LAVALINK_PREMIUM_NODE_NAME", "premium"),
 		premiumAllowedUsers:   parseSnowflakeSet(os.Getenv("PREMIUM_ALLOWED_USER_IDS")),
-		lavalinkNodes: []disgolink.NodeConfig{
-			{
-				Name:     envDefault("LAVALINK_NODE_NAME", "local"),
-				Address:  envDefault("LAVALINK_ADDRESS", "localhost:2333"),
-				Password: envDefault("LAVALINK_PASSWORD", "youshallnotpass"),
-				Secure:   lavalinkSecure,
-			},
-			{
-				Name:     envDefault("LAVALINK_PREMIUM_NODE_NAME", "premium"),
-				Address:  envDefault("LAVALINK_PREMIUM_ADDRESS", "localhost:2333"),
-				Password: envDefault("LAVALINK_PREMIUM_PASSWORD", envDefault("LAVALINK_PASSWORD", "youshallnotpass")),
-				Secure:   lavalinkPremiumSecure,
-			},
+		lavalink: disgolink.NodeConfig{
+			Name:     envDefault("LAVALINK_NODE_NAME", "local"),
+			Address:  envDefault("LAVALINK_ADDRESS", "localhost:2333"),
+			Password: envDefault("LAVALINK_PASSWORD", "youshallnotpass"),
+			Secure:   lavalinkSecure,
 		},
 	}, nil
 }

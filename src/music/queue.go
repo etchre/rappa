@@ -28,15 +28,15 @@ func (p *Player) MoveNext(guildID snowflake.ID, queueNumber int) (lavalink.Track
 		return lavalink.Track{}, err
 	}
 
-	track := playback.queue[index]
+	item := playback.queue[index]
 	if index == 0 {
-		return track, nil
+		return item.Track, nil
 	}
 
 	playback.queue = append(playback.queue[:index], playback.queue[index+1:]...)
-	playback.queue = append([]lavalink.Track{track}, playback.queue...)
+	playback.queue = append([]queuedTrack{item}, playback.queue...)
 
-	return track, nil
+	return item.Track, nil
 }
 
 func (p *Player) Remove(guildID snowflake.ID, queueNumber int) (lavalink.Track, error) {
@@ -49,10 +49,10 @@ func (p *Player) Remove(guildID snowflake.ID, queueNumber int) (lavalink.Track, 
 		return lavalink.Track{}, err
 	}
 
-	track := playback.queue[index]
+	item := playback.queue[index]
 	playback.queue = append(playback.queue[:index], playback.queue[index+1:]...)
 
-	return track, nil
+	return item.Track, nil
 }
 
 func (p *Player) Queue(guildID snowflake.ID) QueueSnapshot {
@@ -60,14 +60,13 @@ func (p *Player) Queue(guildID snowflake.ID) QueueSnapshot {
 	defer p.mu.Unlock()
 
 	playback := p.playback(guildID)
-	queued := make([]lavalink.Track, len(playback.queue))
-	copy(queued, playback.queue)
+	queued := tracksFromQueue(playback.queue)
 
 	var current *lavalink.Track
 	var position lavalink.Duration
 	var volume int
 	if playback.current != nil {
-		currentTrack := *playback.current
+		currentTrack := playback.current.Track
 		current = &currentTrack
 
 		player := p.lavalinkPlayer(guildID)

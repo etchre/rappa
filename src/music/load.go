@@ -89,11 +89,16 @@ func playableIdentifierForNode(node disgolink.Node, input string) string {
 	}
 
 	identifier := playableIdentifier(input)
-	if nodeName(node) == "premium" && isURL(identifier) {
-		return premiumSourcePrefix + identifier
+	return identifier
+}
+
+func premiumPlayableIdentifier(input string) string {
+	input = strings.TrimSpace(input)
+	if strings.HasPrefix(input, premiumSourcePrefix) {
+		return input
 	}
 
-	return identifier
+	return premiumSourcePrefix + playableIdentifier(input)
 }
 
 func playableIdentifier(input string) string {

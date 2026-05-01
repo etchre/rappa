@@ -35,11 +35,12 @@ func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, er
 	playback.playing = true
 	p.mu.Unlock()
 
-	if err := p.playTrack(ctx, guildID, next); err != nil {
+	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
 		return SkipResult{}, err
 	}
 
-	return SkipResult{Next: &next}, nil
+	nextTrack := next.Track
+	return SkipResult{Next: &nextTrack}, nil
 }
 
 func (p *Player) Stop(ctx context.Context, guildID snowflake.ID) error {
@@ -85,39 +86,39 @@ func (p *Player) OnTrackException(player disgolink.Player, event lavalink.TrackE
 }
 
 func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Player, track lavalink.Track) bool {
-	if playerNodeName(player) == p.premiumNodeName {
-		p.logPremiumFailure(player.GuildID(), track)
-		return false
-	}
-
 	p.mu.Lock()
 	playback := p.playback(player.GuildID())
 	if playback.premiumFallbackBusy {
 		p.mu.Unlock()
 		return true
 	}
-	if playback.current == nil || playback.current.Encoded != track.Encoded {
+	if playback.current == nil || playback.current.Track.Encoded != track.Encoded {
 		p.mu.Unlock()
 		return false
 	}
-	if playback.premiumFailureLog == nil {
-		playback.premiumFailureLog = map[string]bool{}
-	}
-	if !playback.premiumFailureLog[track.Encoded] {
+	if !playback.current.PremiumFailureLogged {
 		fmt.Printf("Failed to play, likely a premium track: %s\n", trackTitle(track))
-		playback.premiumFailureLog[track.Encoded] = true
+		playback.current.PremiumFailureLogged = true
 	}
 
-	requester := playback.requesterFor(track)
-	if !playback.premiumFallbackAllowedFor(track) {
-		fmt.Printf(
-			"Refused to use premium fallback for %s requester_id=%s allowed_user_ids=%q\n",
-			requester,
-			playback.requesterIDFor(track),
-			playback.allowedUserIDsFor(track),
-		)
+	current := *playback.current
+	if !current.PremiumAllowed {
+		if !playback.current.PremiumRefusalLogged {
+			fmt.Printf(
+				"Refused to use premium fallback for %s requester_id=%s allowed_user_ids=%q\n",
+				requesterName(current),
+				requesterID(current),
+				current.PremiumAllowedUserIDs,
+			)
+			playback.current.PremiumRefusalLogged = true
+		}
 		p.mu.Unlock()
-		return false
+		go func() {
+			if err := p.advanceAfterFailedTrack(ctx, player.GuildID(), track); err != nil {
+				fmt.Fprintf(os.Stderr, "advance after refused premium fallback failed: %v\n", err)
+			}
+		}()
+		return true
 	}
 	fmt.Printf("Trying premium fallback for %s\n", trackTitle(track))
 	playback.premiumFallbackBusy = true
@@ -126,9 +127,9 @@ func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Play
 	go func() {
 		if err := p.fallbackToPremium(ctx, player.GuildID(), track); err != nil {
 			fmt.Fprintf(os.Stderr, "premium fallback failed: %v\n", err)
-			p.mu.Lock()
-			p.playback(player.GuildID()).premiumFallbackBusy = false
-			p.mu.Unlock()
+			if advanceErr := p.advanceAfterFailedTrack(ctx, player.GuildID(), track); advanceErr != nil {
+				fmt.Fprintf(os.Stderr, "advance after premium fallback failed: %v\n", advanceErr)
+			}
 		}
 	}()
 
@@ -140,15 +141,14 @@ func (p *Player) logPremiumFailure(guildID snowflake.ID, track lavalink.Track) {
 	defer p.mu.Unlock()
 
 	playback := p.playback(guildID)
-	if playback.premiumFailureLog == nil {
-		playback.premiumFailureLog = map[string]bool{}
-	}
-	if playback.premiumFailureLog[track.Encoded] {
+	if playback.current != nil && playback.current.Track.Encoded == track.Encoded && playback.current.PremiumFailureLogged {
 		return
 	}
 
 	fmt.Printf("Failed to play, likely a premium track: %s\n", trackTitle(track))
-	playback.premiumFailureLog[track.Encoded] = true
+	if playback.current != nil && playback.current.Track.Encoded == track.Encoded {
+		playback.current.PremiumFailureLogged = true
+	}
 }
 
 func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
@@ -161,7 +161,7 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	if playback.looping && playback.current != nil {
 		current := *playback.current
 		p.mu.Unlock()
-		return p.playTrack(ctx, guildID, current)
+		return p.playTrack(ctx, guildID, current.Track)
 	}
 
 	if len(playback.queue) == 0 {
@@ -177,19 +177,11 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	playback.current = &next
 	p.mu.Unlock()
 
-	return p.playTrack(ctx, guildID, next)
+	return p.playTrack(ctx, guildID, next.Track)
 }
 
 func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lavalink.Track) error {
-	return p.playTrackOnNode(ctx, guildID, p.node(), track)
-}
-
-func (p *Player) playTrackOnNode(ctx context.Context, guildID snowflake.ID, node disgolink.Node, track lavalink.Track) error {
-	if err := p.ensurePlayerOnNode(ctx, guildID, node); err != nil {
-		return err
-	}
-
-	player := p.lavalinkPlayerOnNode(guildID, node)
+	player := p.lavalinkPlayer(guildID)
 	if err := player.Update(ctx, lavalink.WithTrack(track)); err != nil {
 		debugTrackPlayError(player, track, err)
 		return fmt.Errorf("play track: %w", err)
@@ -200,11 +192,6 @@ func (p *Player) playTrackOnNode(ctx context.Context, guildID snowflake.ID, node
 }
 
 func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track) error {
-	premiumNode := p.premiumNode()
-	if premiumNode == nil {
-		return fmt.Errorf("premium lavalink node %q is not connected", p.premiumNodeName)
-	}
-
 	identifier := originalTrackIdentifier(failedTrack)
 	if identifier == "" {
 		return fmt.Errorf("cannot determine original track URL for premium fallback")
@@ -216,7 +203,7 @@ func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, fa
 		p.mu.Unlock()
 	}()
 
-	loaded, err := loadPlayableTracks(ctx, premiumNode, identifier)
+	loaded, err := loadPlayableTracks(ctx, p.node(), premiumPlayableIdentifier(identifier))
 	if err != nil {
 		return fmt.Errorf("load premium fallback track: %w", err)
 	}
@@ -229,21 +216,17 @@ func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, fa
 
 	p.mu.Lock()
 	playback := p.playback(guildID)
-	if playback.current == nil || playback.current.Encoded != failedTrack.Encoded {
+	if playback.current == nil || playback.current.Track.Encoded != failedTrack.Encoded {
 		p.mu.Unlock()
 		return nil
 	}
 	p.mu.Unlock()
 
-	if err := p.movePlayerToNode(ctx, guildID, premiumNode); err != nil {
-		return err
-	}
-
 	p.mu.Lock()
 	playback = p.playback(guildID)
 	shouldPlay := false
-	if playback.current != nil && playback.current.Encoded == failedTrack.Encoded {
-		playback.current = &premiumTrack
+	if playback.current != nil && playback.current.Track.Encoded == failedTrack.Encoded {
+		playback.current.Track = premiumTrack
 		playback.playing = true
 		shouldPlay = true
 	}
@@ -252,48 +235,32 @@ func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, fa
 		return nil
 	}
 
-	return p.playTrackOnNode(ctx, guildID, premiumNode, premiumTrack)
+	return p.playTrack(ctx, guildID, premiumTrack)
 }
 
-func (p *Player) ensurePlayerOnNode(ctx context.Context, guildID snowflake.ID, node disgolink.Node) error {
-	existing := p.lavalink.ExistingPlayer(guildID)
-	if existing == nil || playerNodeName(existing) == nodeName(node) {
-		return nil
-	}
-
-	return p.movePlayerToNode(ctx, guildID, node)
-}
-
-func (p *Player) movePlayerToNode(ctx context.Context, guildID snowflake.ID, node disgolink.Node) error {
-	existing := p.lavalink.ExistingPlayer(guildID)
-	if existing != nil && playerNodeName(existing) == nodeName(node) {
-		return nil
-	}
-
+func (p *Player) advanceAfterFailedTrack(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track) error {
 	p.mu.Lock()
 	playback := p.playback(guildID)
-	channelID := playback.voiceChannelID
-	sessionID := playback.voiceSessionID
-	token := playback.voiceServerToken
-	endpoint := playback.voiceEndpoint
+	if playback.current == nil || playback.current.Track.Encoded != failedTrack.Encoded {
+		p.mu.Unlock()
+		return nil
+	}
+
+	playback.looping = false
+	if len(playback.queue) == 0 {
+		playback.current = nil
+		playback.playing = false
+		p.mu.Unlock()
+		return p.clearLavalinkTrack(ctx, guildID)
+	}
+
+	next := playback.queue[0]
+	playback.queue = playback.queue[1:]
+	playback.current = &next
+	playback.playing = true
 	p.mu.Unlock()
 
-	if existing != nil {
-		if err := existing.Destroy(ctx); err != nil {
-			fmt.Fprintf(os.Stderr, "destroy old lavalink player failed during node switch: %v\n", err)
-		}
-		p.lavalink.RemovePlayer(guildID)
-	}
-
-	player := p.lavalinkPlayerOnNode(guildID, node)
-	if channelID != nil {
-		player.OnVoiceStateUpdate(ctx, channelID, sessionID)
-	}
-	if token != "" && endpoint != "" {
-		player.OnVoiceServerUpdate(ctx, token, endpoint)
-	}
-
-	return nil
+	return p.playTrack(ctx, guildID, next.Track)
 }
 
 func (p *Player) clearLavalinkTrack(ctx context.Context, guildID snowflake.ID) error {
@@ -316,7 +283,7 @@ func (p *Player) ToggleLoop(guildID snowflake.ID) (LoopResult, error) {
 
 	playback.looping = !playback.looping
 	return LoopResult{
-		Track:   *playback.current,
+		Track:   playback.current.Track,
 		Looping: playback.looping,
 	}, nil
 }
@@ -328,7 +295,7 @@ func (p *Player) Restart(ctx context.Context, guildID snowflake.ID) (lavalink.Tr
 		p.mu.Unlock()
 		return lavalink.Track{}, fmt.Errorf("nothing is playing")
 	}
-	current := *playback.current
+	current := playback.current.Track
 	p.mu.Unlock()
 
 	player := p.lavalinkPlayer(guildID)

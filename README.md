@@ -83,12 +83,11 @@ SYNC_GLOBAL_COMMANDS=false
 CLEAR_GLOBAL_COMMANDS=false
 ```
 
-The default compose stack starts two Lavalink nodes:
+The default compose stack starts one Lavalink node:
 
-- `lavalink`: normal logged-out playback.
-- `lavalink-premium`: cookie-backed yt-dlp playback for premium fallback support.
+- `lavalink`: normal logged-out playback plus the cookie-backed `rappa-premium` yt-dlp plugin for premium fallback support.
 
-The bot tries normal playback first. If Lavalink reports an account-gated playback failure, it retries the current track through the premium node while keeping the normal YouTube metadata for embeds and queue display.
+The bot tries normal playback first. If Lavalink reports an account-gated playback failure, it retries the current track through the `rappa-premium:` source while keeping the normal YouTube metadata for embeds and queue display.
 
 Premium fallback is only enabled for users listed in `PREMIUM_ALLOWED_USER_IDS`. Use comma-separated Discord user IDs if more than one user should be allowed.
 
@@ -105,7 +104,6 @@ View logs:
 ```bash
 docker logs -f rappa-bot
 docker logs -f rappa-lavalink
-docker logs -f rappa-lavalink-premium
 ```
 
 ## Subsequent Runs

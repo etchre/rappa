@@ -1,7 +1,6 @@
 package music
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
@@ -10,29 +9,28 @@ import (
 )
 
 type Player struct {
-	lavalink          disgolink.Client
-	preferredNodeName string
-	premiumNodeName   string
+	lavalink disgolink.Client
 
 	mu     sync.Mutex
 	guilds map[snowflake.ID]*guildPlayback
 }
 
 type guildPlayback struct {
-	current             *lavalink.Track
-	queue               []lavalink.Track
-	premiumAllowed      map[string]bool
-	requesters          map[string]string
-	requesterIDs        map[string]string
-	allowedUserIDs      map[string]string
-	premiumFailureLog   map[string]bool
+	current             *queuedTrack
+	queue               []queuedTrack
 	playing             bool
 	looping             bool
 	premiumFallbackBusy bool
-	voiceChannelID      *snowflake.ID
-	voiceSessionID      string
-	voiceServerToken    string
-	voiceEndpoint       string
+}
+
+type queuedTrack struct {
+	Track                 lavalink.Track
+	PremiumAllowed        bool
+	RequesterName         string
+	RequesterID           string
+	PremiumAllowedUserIDs string
+	PremiumFailureLogged  bool
+	PremiumRefusalLogged  bool
 }
 
 type QueueResult struct {
@@ -69,119 +67,63 @@ type LoopResult struct {
 	Looping bool
 }
 
-func NewPlayer(lavalinkClient disgolink.Client, preferredNodeName string, premiumNodeName string) *Player {
+func NewPlayer(lavalinkClient disgolink.Client) *Player {
 	return &Player{
-		lavalink:          lavalinkClient,
-		preferredNodeName: preferredNodeName,
-		premiumNodeName:   premiumNodeName,
-		guilds:            map[snowflake.ID]*guildPlayback{},
+		lavalink: lavalinkClient,
+		guilds:   map[snowflake.ID]*guildPlayback{},
 	}
 }
 
 func (p *Player) node() disgolink.Node {
-	if p.preferredNodeName != "" {
-		if node := p.lavalink.Node(p.preferredNodeName); node != nil {
-			return node
-		}
-	}
-
 	return p.lavalink.BestNode()
 }
 
-func (p *Player) premiumNode() disgolink.Node {
-	if p.premiumNodeName == "" {
-		return nil
-	}
-
-	return p.lavalink.Node(p.premiumNodeName)
-}
-
 func (p *Player) lavalinkPlayer(guildID snowflake.ID) disgolink.Player {
-	node := p.node()
-	return p.lavalinkPlayerOnNode(guildID, node)
-}
-
-func (p *Player) lavalinkPlayerOnNode(guildID snowflake.ID, node disgolink.Node) disgolink.Player {
-	player := p.lavalink.PlayerOnNode(node, guildID)
-	if node != nil && player.Node() != nil && player.Node().Config().Name != node.Config().Name {
-		fmt.Printf(
-			"[lavalink-debug] existing player node mismatch guild=%s existing_node=%q preferred_node=%q\n",
-			guildID.String(),
-			player.Node().Config().Name,
-			node.Config().Name,
-		)
-	}
-
-	return player
+	return p.lavalink.Player(guildID)
 }
 
 func (p *Player) playback(guildID snowflake.ID) *guildPlayback {
 	playback := p.guilds[guildID]
 	if playback == nil {
-		playback = &guildPlayback{
-			premiumAllowed:    map[string]bool{},
-			requesters:        map[string]string{},
-			requesterIDs:      map[string]string{},
-			allowedUserIDs:    map[string]string{},
-			premiumFailureLog: map[string]bool{},
-		}
+		playback = &guildPlayback{}
 		p.guilds[guildID] = playback
 	}
 
 	return playback
 }
 
-func (playback *guildPlayback) setTrackRequestContext(tracks []lavalink.Track, options AddOptions) {
-	if playback.premiumAllowed == nil {
-		playback.premiumAllowed = map[string]bool{}
+func queuedTracks(tracks []lavalink.Track, options AddOptions) []queuedTrack {
+	items := make([]queuedTrack, len(tracks))
+	for i, track := range tracks {
+		items[i] = queuedTrack{
+			Track:                 track,
+			PremiumAllowed:        options.PremiumFallbackAllowed,
+			RequesterName:         options.RequesterName,
+			RequesterID:           options.RequesterID,
+			PremiumAllowedUserIDs: options.PremiumAllowedUserIDs,
+		}
 	}
-	if playback.requesters == nil {
-		playback.requesters = map[string]string{}
-	}
-	if playback.requesterIDs == nil {
-		playback.requesterIDs = map[string]string{}
-	}
-	if playback.allowedUserIDs == nil {
-		playback.allowedUserIDs = map[string]string{}
-	}
-	for _, track := range tracks {
-		playback.premiumAllowed[track.Encoded] = options.PremiumFallbackAllowed
-		playback.requesters[track.Encoded] = options.RequesterName
-		playback.requesterIDs[track.Encoded] = options.RequesterID
-		playback.allowedUserIDs[track.Encoded] = options.PremiumAllowedUserIDs
-	}
+	return items
 }
 
-func (playback *guildPlayback) premiumFallbackAllowedFor(track lavalink.Track) bool {
-	if playback.premiumAllowed == nil {
-		return false
+func tracksFromQueue(items []queuedTrack) []lavalink.Track {
+	tracks := make([]lavalink.Track, len(items))
+	for i, item := range items {
+		tracks[i] = item.Track
 	}
-	return playback.premiumAllowed[track.Encoded]
+	return tracks
 }
 
-func (playback *guildPlayback) requesterFor(track lavalink.Track) string {
-	if playback.requesters == nil {
-		return "unknown user"
-	}
-	if requester := playback.requesters[track.Encoded]; requester != "" {
-		return requester
+func requesterName(item queuedTrack) string {
+	if item.RequesterName != "" {
+		return item.RequesterName
 	}
 	return "unknown user"
 }
 
-func (playback *guildPlayback) requesterIDFor(track lavalink.Track) string {
-	if playback.requesterIDs == nil {
-		return "unknown"
-	}
-	if requesterID := playback.requesterIDs[track.Encoded]; requesterID != "" {
-		return requesterID
+func requesterID(item queuedTrack) string {
+	if item.RequesterID != "" {
+		return item.RequesterID
 	}
 	return "unknown"
-}
-
-func (playback *guildPlayback) allowedUserIDsFor(track lavalink.Track) string {
-	if playback.allowedUserIDs == nil {
-		return ""
-	}
-	return playback.allowedUserIDs[track.Encoded]
 }
