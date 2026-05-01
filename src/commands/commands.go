@@ -21,6 +21,8 @@ var All = map[string]commandrouter.Command{
 	"remove":       Remove,
 	"restart":      Restart,
 	"setchannel":   SetChannel,
+	"shuffle":      Shuffle,
+	"shuffleall":   ShuffleAll,
 	"skip":         Skip,
 	"stop":         Stop,
 	"mae":          Mae,

@@ -53,6 +53,7 @@ type AddOptions struct {
 	RequesterName          string
 	RequesterID            string
 	PremiumAllowedUserIDs  string
+	Shuffle                bool
 }
 
 type QueueSnapshot struct {

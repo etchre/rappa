@@ -28,6 +28,10 @@ func PlayQuery(data discord.SlashCommandInteractionData) string {
 	return data.String("link")
 }
 
+func PlayShuffle(data discord.SlashCommandInteractionData) bool {
+	return data.Bool("shuffle")
+}
+
 func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate, link string, mode AddMode) {
 	if ctx.Player == nil {
 		commandrouter.RespondError(event, "Music player is not ready yet.")
@@ -65,6 +69,7 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		RequesterName:          requesterName(event),
 		RequesterID:            event.User().ID.String(),
 		PremiumAllowedUserIDs:  ctx.PremiumAllowedUserIDs,
+		Shuffle:                PlayShuffle(event.SlashCommandInteractionData()),
 	}
 	switch mode {
 	case PlayNow:

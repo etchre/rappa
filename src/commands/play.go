@@ -18,6 +18,11 @@ var Play = commandrouter.Command{
 				Description: "A track link or YouTube search query",
 				Required:    true,
 			},
+			discord.ApplicationCommandOptionBool{
+				Name:        "shuffle",
+				Description: "Shuffle playlist or album tracks before queueing",
+				Required:    false,
+			},
 		},
 	},
 	Handle: handlePlay,

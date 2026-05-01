@@ -26,6 +26,9 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		return QueueResult{}, err
 	}
 	tracks := loaded.Tracks
+	if options.Shuffle && len(tracks) > 1 {
+		tracks = shuffledTracks(tracks)
+	}
 	items := queuedTracks(tracks, options)
 	item := items[0]
 
@@ -73,6 +76,9 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		return QueueResult{}, err
 	}
 	tracks := loaded.Tracks
+	if options.Shuffle && len(tracks) > 1 {
+		tracks = shuffledTracks(tracks)
+	}
 	items := queuedTracks(tracks, options)
 	item := items[0]
 
