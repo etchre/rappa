@@ -16,6 +16,7 @@ services:
       IDLE_DISCONNECT_TIMEOUT: ${IDLE_DISCONNECT_TIMEOUT:-5m}
       SYNC_GLOBAL_COMMANDS: ${SYNC_GLOBAL_COMMANDS:-true}
       CLEAR_GLOBAL_COMMANDS: ${CLEAR_GLOBAL_COMMANDS:-false}
+      JOKE_COMMANDS: ${JOKE_COMMANDS:-false}
     depends_on:
       - lavalink
 
