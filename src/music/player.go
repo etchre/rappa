@@ -3,6 +3,7 @@ package music
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
 	"github.com/disgoorg/disgolink/v3/lavalink"
@@ -15,6 +16,7 @@ type Player struct {
 	trackFailureNotify   func(ctx context.Context, guildID snowflake.ID, track lavalink.Track)
 	playbackActiveNotify func(ctx context.Context, guildID snowflake.ID)
 	playbackIdleNotify   func(ctx context.Context, guildID snowflake.ID)
+	nextQueuedTrackID    atomic.Uint64
 
 	mu     sync.Mutex
 	guilds map[snowflake.ID]*guildPlayback
@@ -30,10 +32,14 @@ type guildPlayback struct {
 }
 
 type queuedTrack struct {
+	ID                     uint64
 	Track                  lavalink.Track
 	RecoveryQuery          string
 	RecoveryAttempted      bool
 	ResolvedRetryAttempted bool
+	Preparation            trackPreparation
+	PreparedIdentifier     string
+	PreparedTrack          *lavalink.Track
 	PremiumAllowed         bool
 	RequesterName          string
 	RequesterID            string
@@ -41,6 +47,16 @@ type queuedTrack struct {
 	PremiumFailureLogged   bool
 	PremiumRefusalLogged   bool
 }
+
+type trackPreparation int
+
+const (
+	trackPreparationNone trackPreparation = iota
+	trackPreparationInProgress
+	trackPreparationResolvedLavalink
+	trackPreparationPremiumLikely
+	trackPreparationFailed
+)
 
 type QueueResult struct {
 	Track          lavalink.Track
@@ -125,10 +141,11 @@ func (p *Player) playback(guildID snowflake.ID) *guildPlayback {
 	return playback
 }
 
-func queuedTracks(tracks []lavalink.Track, options AddOptions) []queuedTrack {
+func (p *Player) queuedTracks(tracks []lavalink.Track, options AddOptions) []queuedTrack {
 	items := make([]queuedTrack, len(tracks))
 	for i, track := range tracks {
 		items[i] = queuedTrack{
+			ID:                    p.nextQueuedTrackID.Add(1),
 			Track:                 track,
 			RecoveryQuery:         recoveryQuery(track),
 			PremiumAllowed:        options.PremiumFallbackAllowed,

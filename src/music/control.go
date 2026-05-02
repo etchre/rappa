@@ -38,9 +38,10 @@ func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, er
 	playback.paused = false
 	p.mu.Unlock()
 
-	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
+	if err := p.playQueuedTrack(ctx, guildID, next); err != nil {
 		return SkipResult{}, err
 	}
+	go p.prepareQueueAhead(guildID)
 
 	nextTrack := next.Track
 	return SkipResult{Next: &nextTrack}, nil
@@ -299,11 +300,57 @@ func (p *Player) playNext(ctx context.Context, guildID snowflake.ID) error {
 	playback.paused = false
 	p.mu.Unlock()
 
-	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
+	if err := p.playQueuedTrack(ctx, guildID, next); err != nil {
 		return err
 	}
 	p.notifyAutoTrackStart(ctx, guildID)
+	go p.prepareQueueAhead(guildID)
 	return nil
+}
+
+func (p *Player) playQueuedTrack(ctx context.Context, guildID snowflake.ID, item queuedTrack) error {
+	switch item.Preparation {
+	case trackPreparationResolvedLavalink:
+		if item.PreparedTrack != nil {
+			preparedTrack := *item.PreparedTrack
+			p.replaceCurrentTrack(guildID, item.ID, preparedTrack)
+			return p.playTrack(ctx, guildID, preparedTrack)
+		}
+	case trackPreparationPremiumLikely:
+		if item.PreparedIdentifier != "" {
+			return p.playPreparedPremiumTrack(ctx, guildID, item)
+		}
+	}
+
+	return p.playTrack(ctx, guildID, item.Track)
+}
+
+func (p *Player) playPreparedPremiumTrack(ctx context.Context, guildID snowflake.ID, item queuedTrack) error {
+	loaded, err := loadPlayableTracks(ctx, p.node(), premiumPlayableIdentifier(item.PreparedIdentifier))
+	if err != nil {
+		return fmt.Errorf("load prepared premium track: %w", err)
+	}
+	if len(loaded.Tracks) == 0 {
+		return fmt.Errorf("prepared premium returned no tracks")
+	}
+
+	premiumTrack := loaded.Tracks[0]
+	premiumTrack.Info = item.Track.Info
+	p.replaceCurrentTrack(guildID, item.ID, premiumTrack)
+	return p.playTrack(ctx, guildID, premiumTrack)
+}
+
+func (p *Player) replaceCurrentTrack(guildID snowflake.ID, itemID uint64, track lavalink.Track) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	playback := p.playback(guildID)
+	if playback.current == nil || playback.current.ID != itemID {
+		return
+	}
+
+	playback.current.Track = track
+	playback.current.ResolvedRetryAttempted = true
 }
 
 func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lavalink.Track) error {

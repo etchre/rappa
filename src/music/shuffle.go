@@ -19,6 +19,7 @@ func (p *Player) ShuffleQueue(guildID snowflake.ID) (int, error) {
 	}
 
 	shuffleQueuedTracks(playback.queue)
+	go p.prepareQueueAhead(guildID)
 	return len(playback.queue), nil
 }
 
@@ -50,9 +51,10 @@ func (p *Player) ShuffleAll(ctx context.Context, guildID snowflake.ID) (lavalink
 	playback.looping = false
 	p.mu.Unlock()
 
-	if err := p.playTrack(ctx, guildID, next.Track); err != nil {
+	if err := p.playQueuedTrack(ctx, guildID, next); err != nil {
 		return lavalink.Track{}, 0, err
 	}
+	go p.prepareQueueAhead(guildID)
 
 	return next.Track, len(queue), nil
 }

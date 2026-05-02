@@ -29,7 +29,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 	if options.Shuffle && len(tracks) > 1 {
 		tracks = shuffledTracks(tracks)
 	}
-	items := queuedTracks(tracks, options)
+	items := p.queuedTracks(tracks, options)
 	item := items[0]
 
 	p.mu.Lock()
@@ -58,6 +58,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 
 		return QueueResult{}, err
 	}
+	go p.prepareQueueAhead(guildID)
 
 	return QueueResult{
 		Track:          item.Track,
@@ -83,7 +84,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 	if options.Shuffle && len(tracks) > 1 {
 		tracks = shuffledTracks(tracks)
 	}
-	items := queuedTracks(tracks, options)
+	items := p.queuedTracks(tracks, options)
 	item := items[0]
 
 	p.mu.Lock()
@@ -101,6 +102,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 			position = position - len(tracks) + 1
 		}
 		p.mu.Unlock()
+		go p.prepareQueueAhead(guildID)
 
 		return QueueResult{
 			Track:          item.Track,
@@ -131,6 +133,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 
 		return QueueResult{}, err
 	}
+	go p.prepareQueueAhead(guildID)
 
 	return QueueResult{
 		Track:          item.Track,

@@ -35,6 +35,7 @@ func (p *Player) MoveNext(guildID snowflake.ID, queueNumber int) (lavalink.Track
 
 	playback.queue = append(playback.queue[:index], playback.queue[index+1:]...)
 	playback.queue = append([]queuedTrack{item}, playback.queue...)
+	go p.prepareQueueAhead(guildID)
 
 	return item.Track, nil
 }
