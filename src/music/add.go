@@ -29,6 +29,9 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 	if options.Shuffle && len(tracks) > 1 {
 		tracks = shuffledTracks(tracks)
 	}
+	if options.Limit > 0 && len(tracks) > options.Limit {
+		tracks = tracks[:options.Limit]
+	}
 	items := p.queuedTracks(tracks, options)
 	if loaded.UsedPremiumRoute {
 		for i := range items {
@@ -88,6 +91,9 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 	tracks := loaded.Tracks
 	if options.Shuffle && len(tracks) > 1 {
 		tracks = shuffledTracks(tracks)
+	}
+	if options.Limit > 0 && len(tracks) > options.Limit {
+		tracks = tracks[:options.Limit]
 	}
 	items := p.queuedTracks(tracks, options)
 	if loaded.UsedPremiumRoute {

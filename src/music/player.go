@@ -79,6 +79,7 @@ type AddOptions struct {
 	RequesterID            string
 	PremiumAllowedUserIDs  string
 	Shuffle                bool
+	Limit                  int // max tracks to keep from a collection (0 = no limit)
 }
 
 type QueueSnapshot struct {

@@ -14,14 +14,14 @@ func QueuedEmbed(result music.QueueResult, requester string) (string, discord.Em
 		return collectionQueuedContent(result.CollectionKind, result.Shuffled), collectionQueuedEmbed(result, requester)
 	}
 
-	return "Song queued!", songQueuedEmbed(result.Track, requester)
+	return "Song queued!", songQueuedEmbed(result.Track, result.Position, requester)
 }
 
-func songQueuedEmbed(track lavalink.Track, requester string) discord.Embed {
+func songQueuedEmbed(track lavalink.Track, position int, requester string) discord.Embed {
 	embed := discord.Embed{}.
 		WithColor(musicEmbedColor).
 		WithTitle(track.Info.Title).
-		WithDescription(fmt.Sprintf("Duration: `%s`\nArtist: %s", FormatDuration(track.Info.Length), track.Info.Author)).
+		WithDescription(fmt.Sprintf("Duration: `%s`\nArtist: %s\nQueue position: %d", FormatDuration(track.Info.Length), track.Info.Author, position)).
 		AddField("Requested by", requester, true)
 
 	if track.Info.URI != nil {

@@ -12,6 +12,7 @@ func All(includeJokes bool) map[string]commandrouter.Command {
 		"clear":        Clear,
 		"leave":        Leave,
 		"loop":         Loop,
+		"move":         Move,
 		"movenext":     MoveNext,
 		"nowplaying":   NowPlaying,
 		"pause":        Pause,
@@ -20,7 +21,9 @@ func All(includeJokes bool) map[string]commandrouter.Command {
 		"playrightnow": PlayRightNow,
 		"queue":        Queue,
 		"remove":       Remove,
+		"removeslice":  RemoveSlice,
 		"restart":      Restart,
+		"seek":         Seek,
 		"setchannel":   SetChannel,
 		"shuffle":      Shuffle,
 		"shuffleall":   ShuffleAll,
@@ -30,10 +33,12 @@ func All(includeJokes bool) map[string]commandrouter.Command {
 	}
 
 	if includeJokes {
+		commands["africa"] = Africa
 		commands["diddy"] = Diddy
 		commands["e"] = E
 		commands["june"] = June
 		commands["mae"] = Mae
+		commands["yolk"] = Yolk
 	}
 
 	return commands

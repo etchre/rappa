@@ -500,6 +500,40 @@ func (p *Player) ToggleLoop(guildID snowflake.ID) (LoopResult, error) {
 	}, nil
 }
 
+type SeekResult struct {
+	Track    lavalink.Track
+	Position lavalink.Duration
+}
+
+func (p *Player) Seek(ctx context.Context, guildID snowflake.ID, offsetMs lavalink.Duration) (SeekResult, error) {
+	p.mu.Lock()
+	playback := p.playback(guildID)
+	if !playback.playing || playback.current == nil {
+		p.mu.Unlock()
+		return SeekResult{}, fmt.Errorf("nothing is playing")
+	}
+	track := playback.current.Track
+	p.mu.Unlock()
+
+	player := p.lavalinkPlayer(guildID)
+	current := player.Position()
+	target := current + offsetMs
+
+	if target < 0 {
+		target = 0
+	}
+	duration := track.Info.Length
+	if target > duration {
+		target = duration
+	}
+
+	if err := player.Update(ctx, lavalink.WithPosition(target)); err != nil {
+		return SeekResult{}, fmt.Errorf("seek track: %w", err)
+	}
+
+	return SeekResult{Track: track, Position: target}, nil
+}
+
 func (p *Player) Restart(ctx context.Context, guildID snowflake.ID) (lavalink.Track, error) {
 	p.mu.Lock()
 	playback := p.playback(guildID)

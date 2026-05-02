@@ -24,6 +24,11 @@ var PlayNext = commandrouter.Command{
 				Description: "Shuffle playlist or album tracks before queueing",
 				Required:    false,
 			},
+			discord.ApplicationCommandOptionInt{
+				Name:        "upto",
+				Description: "Only queue the first N tracks from a playlist or album",
+				Required:    false,
+			},
 		},
 	},
 	Handle: handlePlayNext,
