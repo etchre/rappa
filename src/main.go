@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := loadEnv(); err != nil {
 		fmt.Fprintln(os.Stderr, "warning: .env file not loaded")
 	}
 
@@ -19,4 +19,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "bot failed: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func loadEnv() error {
+	for _, filename := range []string{".env", "../.env"} {
+		err := godotenv.Load(filename)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return os.ErrNotExist
 }

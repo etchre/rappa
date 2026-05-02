@@ -29,7 +29,8 @@ services:
     environment:
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
       YTDLP_COOKIES_FILE: /config/youtube-cookies.txt
-      YTDLP_EXTRACTOR_ARGS: youtube:player_client=tv
+      YTDLP_EXTRACTOR_ARGS: youtube:player_client=web_music
+      YTDLP_FORMAT: bestaudio/best
       YTDLP_JS_RUNTIMES: node
     volumes:
       - ./lavalink/application-premium.yml:/opt/Lavalink/application.yml:ro

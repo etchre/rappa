@@ -14,8 +14,8 @@ public class RappaPremiumConfig {
 
     public RappaPremiumConfig() {
         this.cookiesFile = env("YTDLP_COOKIES_FILE", "");
-        this.extractorArgs = env("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=tv");
-        this.format = env("YTDLP_FORMAT", "bestaudio");
+        this.extractorArgs = env("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=web_music");
+        this.format = env("YTDLP_FORMAT", "bestaudio/best");
         this.timeoutMillis = parseLong(env("YTDLP_TIMEOUT_MS", "30000"), 30000L);
     }
 

@@ -17,15 +17,20 @@ func debugTrackLoad(node disgolink.Node, originalIdentifier string, playableIden
 	)
 }
 
-func debugTrackLoadError(node disgolink.Node, identifier string, err error) {
+func debugTrackLoadError(node disgolink.Node, originalIdentifier string, playableIdentifier string, err error) {
 	fmt.Printf(
-		"[lavalink-debug] load request failed node=%q input=%q error=%v\n",
+		"[lavalink-debug] load request failed node=%q input=%q resolved_identifier=%q error=%v\n",
 		nodeName(node),
-		identifier,
+		originalIdentifier,
+		playableIdentifier,
 		err,
 	)
 	if looksAccountGated(err.Error()) {
-		fmt.Printf("[lavalink-debug] likely account/premium-gated track input=%q\n", identifier)
+		fmt.Printf(
+			"[lavalink-debug] likely account/premium-gated track input=%q resolved_identifier=%q\n",
+			originalIdentifier,
+			playableIdentifier,
+		)
 	}
 }
 

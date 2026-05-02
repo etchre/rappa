@@ -1,12 +1,13 @@
 package music
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,30 +17,19 @@ import (
 
 const youtubeSearchPrefix = "ytsearch:"
 const premiumSourcePrefix = "rappa-premium:"
+const youtubeResolverTimeout = 10 * time.Second
+
 const (
 	collectionKindAlbum    = "album"
 	collectionKindPlaylist = "playlist"
 )
 
+var topicSuffixPattern = regexp.MustCompile(`(?i)\s*-\s*topic$`)
+
 type playableLoad struct {
 	Tracks         []lavalink.Track
 	CollectionName string
 	CollectionKind string
-}
-
-type ytDLPPlaylist struct {
-	Title   string       `json:"title"`
-	Entries []ytDLPEntry `json:"entries"`
-}
-
-type ytDLPEntry struct {
-	ID         string `json:"id"`
-	URL        string `json:"url"`
-	WebpageURL string `json:"webpage_url"`
-	Title      string `json:"title"`
-	Channel    string `json:"channel"`
-	Uploader   string `json:"uploader"`
-	Duration   int64  `json:"duration"`
 }
 
 func (p *Player) Search(ctx context.Context, query string, limit int) ([]lavalink.Track, error) {
@@ -74,20 +64,12 @@ func (p *Player) Search(ctx context.Context, query string, limit int) ([]lavalin
 
 func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier string) (playableLoad, error) {
 	originalIdentifier := identifier
-	if isYouTubeMusicCollectionURL(originalIdentifier) && !strings.HasPrefix(originalIdentifier, premiumSourcePrefix) {
-		if loaded, err := loadYouTubeMusicCollectionWithYTDLP(ctx, node, originalIdentifier); err == nil {
-			return loaded, nil
-		} else {
-			fmt.Printf("yt-dlp collection expansion failed, falling back to Lavalink playlist loader: %v\n", err)
-		}
-	}
-
-	identifier = playableIdentifierForNode(node, identifier)
+	identifier = playableIdentifierForNode(ctx, node, identifier)
 	debugTrackLoad(node, originalIdentifier, identifier)
 
 	result, err := node.LoadTracks(ctx, identifier)
 	if err != nil {
-		debugTrackLoadError(node, originalIdentifier, err)
+		debugTrackLoadError(node, originalIdentifier, identifier, err)
 		return playableLoad{}, fmt.Errorf("load tracks: %w", err)
 	}
 
@@ -139,104 +121,14 @@ func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier str
 	}
 }
 
-func loadYouTubeMusicCollectionWithYTDLP(ctx context.Context, node disgolink.Node, identifier string) (playableLoad, error) {
-	playlist, err := expandYouTubeMusicCollection(ctx, identifier)
-	if err != nil {
-		return playableLoad{}, err
-	}
-	if len(playlist.Entries) == 0 {
-		return playableLoad{}, fmt.Errorf("yt-dlp returned no playlist entries")
-	}
-
-	tracks := make([]lavalink.Track, 0, len(playlist.Entries))
-	for _, entry := range playlist.Entries {
-		entryIdentifier := entryPlayableIdentifier(entry)
-		if entryIdentifier == "" {
-			fmt.Printf("skipping yt-dlp playlist entry without a playable URL: title=%q id=%q\n", entry.Title, entry.ID)
-			continue
-		}
-
-		loaded, err := loadPlayableTracks(ctx, node, entryIdentifier)
-		if err != nil {
-			fmt.Printf("skipping yt-dlp playlist entry load failure: title=%q identifier=%q err=%v\n", entry.Title, entryIdentifier, err)
-			continue
-		}
-		if len(loaded.Tracks) == 0 {
-			continue
-		}
-		tracks = append(tracks, loaded.Tracks[0])
-	}
-	if len(tracks) == 0 {
-		return playableLoad{}, fmt.Errorf("yt-dlp playlist entries could not be loaded by Lavalink")
-	}
-
-	return playableLoad{
-		Tracks:         tracks,
-		CollectionName: collectionName(identifier, playlist.Title),
-		CollectionKind: collectionKind(identifier),
-	}, nil
-}
-
-func expandYouTubeMusicCollection(ctx context.Context, identifier string) (ytDLPPlaylist, error) {
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(
-		ctx,
-		"yt-dlp",
-		"--flat-playlist",
-		"--dump-single-json",
-		"--no-warnings",
-		identifier,
-	)
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	output, err := cmd.Output()
-	if ctx.Err() != nil {
-		return ytDLPPlaylist{}, fmt.Errorf("yt-dlp playlist expansion timed out")
-	}
-	if err != nil {
-		return ytDLPPlaylist{}, fmt.Errorf("yt-dlp playlist expansion failed: %w: %s", err, strings.TrimSpace(stderr.String()))
-	}
-
-	var playlist ytDLPPlaylist
-	if err := json.Unmarshal(output, &playlist); err != nil {
-		return ytDLPPlaylist{}, fmt.Errorf("parse yt-dlp playlist JSON: %w", err)
-	}
-
-	return playlist, nil
-}
-
-func entryPlayableIdentifier(entry ytDLPEntry) string {
-	for _, candidate := range []string{entry.WebpageURL, entry.URL} {
-		candidate = strings.TrimSpace(candidate)
-		if candidate == "" {
-			continue
-		}
-		if isURL(candidate) {
-			return candidate
-		}
-		if strings.Contains(candidate, "youtube.com/watch") || strings.Contains(candidate, "youtu.be/") {
-			return candidate
-		}
-	}
-
-	if entry.ID == "" {
-		return ""
-	}
-
-	return "https://music.youtube.com/watch?v=" + entry.ID
-}
-
-func playableIdentifierForNode(node disgolink.Node, input string) string {
+func playableIdentifierForNode(ctx context.Context, node disgolink.Node, input string) string {
 	input = strings.TrimSpace(input)
 	if strings.HasPrefix(input, premiumSourcePrefix) {
-		return input
+		identifier := strings.TrimPrefix(input, premiumSourcePrefix)
+		return premiumSourcePrefix + resolvedYouTubeIdentifier(ctx, identifier)
 	}
 
-	identifier := playableIdentifier(input)
+	identifier := playableIdentifier(resolvedYouTubeIdentifier(ctx, input))
 	return identifier
 }
 
@@ -258,24 +150,73 @@ func playableIdentifier(input string) string {
 	return youtubeSearchPrefix + input
 }
 
+func resolvedYouTubeIdentifier(ctx context.Context, input string) string {
+	videoID := YouTubeVideoID(input)
+	if videoID == "" {
+		return input
+	}
+
+	resolvedID, err := resolveYouTubeVideoID(ctx, videoID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "youtube music id resolver failed for %s: %v\n", videoID, err)
+		return input
+	}
+	if resolvedID == "" {
+		return input
+	}
+
+	return YouTubeMusicTrackURL(resolvedID)
+}
+
+func resolveYouTubeVideoID(ctx context.Context, videoID string) (string, error) {
+	resolverCtx, cancel := context.WithTimeout(ctx, youtubeResolverTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(resolverCtx, pythonCommand(), resolverScriptPath(), videoID)
+	output, err := cmd.CombinedOutput()
+	if resolverCtx.Err() != nil {
+		return "", fmt.Errorf("resolver timed out")
+	}
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
+	}
+
+	resolvedID := strings.TrimSpace(string(output))
+	if !isYouTubeVideoID(resolvedID) {
+		return "", fmt.Errorf("resolver returned invalid video id %q", resolvedID)
+	}
+
+	return resolvedID, nil
+}
+
+func pythonCommand() string {
+	if value := strings.TrimSpace(os.Getenv("YTMUSIC_RESOLVER_PYTHON")); value != "" {
+		return value
+	}
+	return "python3"
+}
+
+func resolverScriptPath() string {
+	if value := strings.TrimSpace(os.Getenv("YTMUSIC_RESOLVER_SCRIPT")); value != "" {
+		return value
+	}
+
+	for _, candidate := range []string{
+		"/app/ytmusic_yt_dlp_test.py",
+		"ytmusic_yt_dlp_test.py",
+		filepath.Join("..", "ytmusic_yt_dlp_test.py"),
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	return "ytmusic_yt_dlp_test.py"
+}
+
 func isURL(input string) bool {
 	parsed, err := url.Parse(input)
 	return err == nil && parsed.Scheme != "" && parsed.Host != ""
-}
-
-func isYouTubeMusicCollectionURL(input string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(input))
-	if err != nil {
-		return false
-	}
-
-	host := strings.ToLower(parsed.Host)
-	if host != "music.youtube.com" {
-		return false
-	}
-
-	query := parsed.Query()
-	return query.Get("list") != "" && (parsed.Path == "/playlist" || parsed.Path == "/watch")
 }
 
 func hasSearchPrefix(input string) bool {
@@ -297,22 +238,138 @@ func originalTrackIdentifier(track lavalink.Track) string {
 	return track.Info.Identifier
 }
 
+func YouTubeVideoID(identifier string) string {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(identifier)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+	if host == "youtu.be" {
+		videoID := strings.Trim(strings.TrimPrefix(parsed.EscapedPath(), "/"), "/")
+		if isYouTubeVideoID(videoID) {
+			return videoID
+		}
+		return ""
+	}
+
+	if host != "youtube.com" && host != "www.youtube.com" && host != "music.youtube.com" {
+		return ""
+	}
+	if parsed.Path != "/watch" || parsed.Query().Get("list") != "" {
+		return ""
+	}
+
+	videoID := parsed.Query().Get("v")
+	if isYouTubeVideoID(videoID) {
+		return videoID
+	}
+	return ""
+}
+
+func resolvedTrackIdentifier(ctx context.Context, track lavalink.Track) string {
+	for _, candidate := range []string{originalTrackIdentifier(track), track.Info.Identifier} {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+
+		if videoID := YouTubeVideoID(candidate); videoID != "" {
+			return resolvedYouTubeIdentifier(ctx, candidate)
+		}
+		if isYouTubeVideoID(candidate) {
+			resolvedID, err := resolveYouTubeVideoID(ctx, candidate)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "youtube music id resolver failed for %s: %v\n", candidate, err)
+				return YouTubeMusicTrackURL(candidate)
+			}
+			return YouTubeMusicTrackURL(resolvedID)
+		}
+		if musicURL := YouTubeMusicTrackURL(candidate); musicURL != "" {
+			return musicURL
+		}
+	}
+
+	return ""
+}
+
+func YouTubeMusicTrackURL(identifier string) string {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(identifier)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		if isYouTubeVideoID(identifier) {
+			return "https://music.youtube.com/watch?v=" + identifier
+		}
+		return ""
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+	if host != "youtube.com" && host != "www.youtube.com" && host != "music.youtube.com" && host != "youtu.be" {
+		return ""
+	}
+
+	videoID := parsed.Query().Get("v")
+	if host == "youtu.be" {
+		videoID = strings.Trim(strings.TrimPrefix(parsed.EscapedPath(), "/"), "/")
+	}
+	if !isYouTubeVideoID(videoID) {
+		return ""
+	}
+
+	musicURL := url.URL{
+		Scheme: "https",
+		Host:   "music.youtube.com",
+		Path:   "/watch",
+	}
+	query := musicURL.Query()
+	query.Set("v", videoID)
+	musicURL.RawQuery = query.Encode()
+
+	return musicURL.String()
+}
+
+func isYouTubeVideoID(identifier string) bool {
+	if len(identifier) != 11 {
+		return false
+	}
+
+	for _, r := range identifier {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' {
+			continue
+		}
+		return false
+	}
+
+	return true
+}
+
+func recoveryQuery(track lavalink.Track) string {
+	author := topicSuffixPattern.ReplaceAllString(strings.TrimSpace(track.Info.Author), "")
+	title := strings.TrimSpace(track.Info.Title)
+
+	if author == "" {
+		return title
+	}
+	if title == "" {
+		return author
+	}
+
+	return author + " " + title
+}
+
 func collectionKind(identifier string) string {
 	if strings.Contains(identifier, "OLAK5uy") {
 		return collectionKindAlbum
 	}
 
 	return collectionKindPlaylist
-}
-
-func collectionName(identifier string, fallback string) string {
-	if strings.TrimSpace(fallback) != "" {
-		return fallback
-	}
-
-	if collectionKind(identifier) == collectionKindAlbum {
-		return "Album"
-	}
-
-	return "Playlist"
 }

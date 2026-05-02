@@ -67,9 +67,8 @@ func (p *Player) Stop(ctx context.Context, guildID snowflake.ID) error {
 
 func (p *Player) OnTrackEnd(player disgolink.Player, event lavalink.TrackEndEvent) {
 	if event.Reason == lavalink.TrackEndReasonLoadFailed {
-		if p.startPremiumFallback(context.Background(), player, event.Track) {
-			return
-		}
+		p.startPremiumFallback(context.Background(), player, event.Track)
+		return
 	}
 
 	if !event.Reason.MayStartNext() {
@@ -116,6 +115,14 @@ func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Play
 	}
 
 	current := *playback.current
+	if !current.ResolvedRetryAttempted {
+		playback.current.ResolvedRetryAttempted = true
+		playback.premiumFallbackBusy = true
+		p.mu.Unlock()
+		go p.retryResolvedThenFallback(ctx, player, track)
+		return true
+	}
+
 	if !current.PremiumAllowed {
 		if !playback.current.PremiumRefusalLogged {
 			fmt.Printf(
@@ -128,6 +135,9 @@ func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Play
 		}
 		p.mu.Unlock()
 		go func() {
+			if p.recoverFailedTrackBySearch(ctx, player.GuildID(), track) {
+				return
+			}
 			if err := p.advanceAfterFailedTrack(ctx, player.GuildID(), track); err != nil {
 				fmt.Fprintf(os.Stderr, "advance after refused premium fallback failed: %v\n", err)
 			}
@@ -141,6 +151,9 @@ func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Play
 	go func() {
 		if err := p.fallbackToPremium(ctx, player.GuildID(), track); err != nil {
 			fmt.Fprintf(os.Stderr, "premium fallback failed: %v\n", err)
+			if p.recoverFailedTrackBySearch(ctx, player.GuildID(), track) {
+				return
+			}
 			if advanceErr := p.advanceAfterFailedTrack(ctx, player.GuildID(), track); advanceErr != nil {
 				fmt.Fprintf(os.Stderr, "advance after premium fallback failed: %v\n", advanceErr)
 			}
@@ -148,6 +161,98 @@ func (p *Player) startPremiumFallback(ctx context.Context, player disgolink.Play
 	}()
 
 	return true
+}
+
+func (p *Player) retryResolvedThenFallback(ctx context.Context, player disgolink.Player, failedTrack lavalink.Track) {
+	guildID := player.GuildID()
+	if err := p.retryWithResolvedLavalinkTrack(ctx, guildID, failedTrack); err == nil {
+		p.setPremiumFallbackBusy(guildID, false)
+		return
+	} else {
+		fmt.Fprintf(os.Stderr, "resolved lavalink retry failed: %v\n", err)
+	}
+
+	p.mu.Lock()
+	playback := p.playback(guildID)
+	if playback.current == nil || playback.current.Track.Encoded != failedTrack.Encoded {
+		playback.premiumFallbackBusy = false
+		p.mu.Unlock()
+		return
+	}
+
+	current := *playback.current
+	if !current.PremiumAllowed {
+		if !playback.current.PremiumRefusalLogged {
+			fmt.Printf(
+				"Refused to use premium fallback for %s requester_id=%s allowed_user_ids=%q\n",
+				requesterName(current),
+				requesterID(current),
+				current.PremiumAllowedUserIDs,
+			)
+			playback.current.PremiumRefusalLogged = true
+		}
+		playback.premiumFallbackBusy = false
+		p.mu.Unlock()
+
+		if p.recoverFailedTrackBySearch(ctx, guildID, failedTrack) {
+			return
+		}
+		if err := p.advanceAfterFailedTrack(ctx, guildID, failedTrack); err != nil {
+			fmt.Fprintf(os.Stderr, "advance after refused premium fallback failed: %v\n", err)
+		}
+		return
+	}
+	p.mu.Unlock()
+
+	fmt.Printf("Trying premium fallback for %s\n", trackTitle(failedTrack))
+	if err := p.fallbackToPremium(ctx, guildID, failedTrack); err != nil {
+		fmt.Fprintf(os.Stderr, "premium fallback failed: %v\n", err)
+		if p.recoverFailedTrackBySearch(ctx, guildID, failedTrack) {
+			return
+		}
+		if advanceErr := p.advanceAfterFailedTrack(ctx, guildID, failedTrack); advanceErr != nil {
+			fmt.Fprintf(os.Stderr, "advance after premium fallback failed: %v\n", advanceErr)
+		}
+	}
+}
+
+func (p *Player) retryWithResolvedLavalinkTrack(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track) error {
+	identifier := resolvedTrackIdentifier(ctx, failedTrack)
+	if identifier == "" {
+		return fmt.Errorf("cannot determine original track URL for resolved lavalink retry")
+	}
+
+	fmt.Printf("Trying resolved Lavalink retry for %s identifier=%q\n", trackTitle(failedTrack), identifier)
+	loaded, err := loadPlayableTracks(ctx, p.node(), identifier)
+	if err != nil {
+		return fmt.Errorf("load resolved lavalink retry track: %w", err)
+	}
+	if len(loaded.Tracks) == 0 {
+		return fmt.Errorf("resolved lavalink retry returned no tracks")
+	}
+
+	retryTrack := loaded.Tracks[0]
+	p.mu.Lock()
+	playback := p.playback(guildID)
+	shouldPlay := false
+	if playback.current != nil && playback.current.Track.Encoded == failedTrack.Encoded {
+		playback.current.Track = retryTrack
+		playback.playing = true
+		playback.paused = false
+		shouldPlay = true
+	}
+	p.mu.Unlock()
+	if !shouldPlay {
+		return nil
+	}
+
+	return p.playTrack(ctx, guildID, retryTrack)
+}
+
+func (p *Player) setPremiumFallbackBusy(guildID snowflake.ID, busy bool) {
+	p.mu.Lock()
+	p.playback(guildID).premiumFallbackBusy = busy
+	p.mu.Unlock()
 }
 
 func (p *Player) logPremiumFailure(guildID snowflake.ID, track lavalink.Track) {
@@ -214,7 +319,7 @@ func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lava
 }
 
 func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track) error {
-	identifier := originalTrackIdentifier(failedTrack)
+	identifier := resolvedTrackIdentifier(ctx, failedTrack)
 	if identifier == "" {
 		return fmt.Errorf("cannot determine original track URL for premium fallback")
 	}
@@ -259,6 +364,68 @@ func (p *Player) fallbackToPremium(ctx context.Context, guildID snowflake.ID, fa
 	}
 
 	return p.playTrack(ctx, guildID, premiumTrack)
+}
+
+func (p *Player) recoverFailedTrackBySearch(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track) bool {
+	p.mu.Lock()
+	playback := p.playback(guildID)
+	if playback.current == nil || playback.current.Track.Encoded != failedTrack.Encoded {
+		p.mu.Unlock()
+		return false
+	}
+	if playback.current.RecoveryAttempted || playback.current.RecoveryQuery == "" {
+		p.mu.Unlock()
+		return false
+	}
+
+	query := playback.current.RecoveryQuery
+	playback.current.RecoveryAttempted = true
+	playback.premiumFallbackBusy = true
+	p.mu.Unlock()
+
+	defer func() {
+		p.mu.Lock()
+		p.playback(guildID).premiumFallbackBusy = false
+		p.mu.Unlock()
+	}()
+
+	fmt.Printf("Trying search recovery for %s query=%q\n", trackTitle(failedTrack), query)
+	loaded, err := loadPlayableTracks(ctx, p.node(), query)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "search recovery failed: %v\n", err)
+		return false
+	}
+	if len(loaded.Tracks) == 0 {
+		fmt.Fprintf(os.Stderr, "search recovery returned no tracks query=%q\n", query)
+		return false
+	}
+
+	recoveredTrack := loaded.Tracks[0]
+	if recoveredTrack.Encoded == failedTrack.Encoded {
+		fmt.Fprintf(os.Stderr, "search recovery returned the same failed track query=%q\n", query)
+		return false
+	}
+
+	p.mu.Lock()
+	playback = p.playback(guildID)
+	shouldPlay := false
+	if playback.current != nil && playback.current.Track.Encoded == failedTrack.Encoded {
+		playback.current.Track = recoveredTrack
+		playback.playing = true
+		playback.paused = false
+		shouldPlay = true
+	}
+	p.mu.Unlock()
+	if !shouldPlay {
+		return false
+	}
+
+	if err := p.playTrack(ctx, guildID, recoveredTrack); err != nil {
+		fmt.Fprintf(os.Stderr, "play search recovery failed: %v\n", err)
+		return false
+	}
+
+	return true
 }
 
 func (p *Player) advanceAfterFailedTrack(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track) error {

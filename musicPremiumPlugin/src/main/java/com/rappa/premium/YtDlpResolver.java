@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class YtDlpResolver {
     private static final Logger log = LoggerFactory.getLogger(YtDlpResolver.class);
+    private static final String YOUTUBE_PLAYER_CLIENT_ARG = "youtube:player_client=web_music";
 
     private final RappaPremiumConfig config;
 
@@ -37,10 +38,8 @@ public class YtDlpResolver {
             command.add(config.cookiesFile());
         }
 
-        if (!config.extractorArgs().isBlank()) {
-            command.add("--extractor-args");
-            command.add(config.extractorArgs());
-        }
+        command.add("--extractor-args");
+        command.add(extractorArgsWithWebMusicClient(config.extractorArgs()));
 
         command.add(identifier);
 
@@ -122,5 +121,16 @@ public class YtDlpResolver {
             }
         }
         return null;
+    }
+
+    private static String extractorArgsWithWebMusicClient(String extractorArgs) {
+        String trimmed = extractorArgs.trim();
+        if (trimmed.isEmpty()) {
+            return YOUTUBE_PLAYER_CLIENT_ARG;
+        }
+        if (trimmed.contains("youtube:player_client=")) {
+            return trimmed.replaceAll("youtube:player_client=[^;\\s]+", YOUTUBE_PLAYER_CLIENT_ARG);
+        }
+        return trimmed + ";" + YOUTUBE_PLAYER_CLIENT_ARG;
     }
 }

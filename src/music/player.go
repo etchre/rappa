@@ -30,13 +30,16 @@ type guildPlayback struct {
 }
 
 type queuedTrack struct {
-	Track                 lavalink.Track
-	PremiumAllowed        bool
-	RequesterName         string
-	RequesterID           string
-	PremiumAllowedUserIDs string
-	PremiumFailureLogged  bool
-	PremiumRefusalLogged  bool
+	Track                  lavalink.Track
+	RecoveryQuery          string
+	RecoveryAttempted      bool
+	ResolvedRetryAttempted bool
+	PremiumAllowed         bool
+	RequesterName          string
+	RequesterID            string
+	PremiumAllowedUserIDs  string
+	PremiumFailureLogged   bool
+	PremiumRefusalLogged   bool
 }
 
 type QueueResult struct {
@@ -127,6 +130,7 @@ func queuedTracks(tracks []lavalink.Track, options AddOptions) []queuedTrack {
 	for i, track := range tracks {
 		items[i] = queuedTrack{
 			Track:                 track,
+			RecoveryQuery:         recoveryQuery(track),
 			PremiumAllowed:        options.PremiumFallbackAllowed,
 			RequesterName:         options.RequesterName,
 			RequesterID:           options.RequesterID,
