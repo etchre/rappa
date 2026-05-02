@@ -69,36 +69,77 @@ func queuePreparationLookahead() int {
 }
 
 func (p *Player) prepareQueuedTrack(ctx context.Context, item queuedTrack) preparedTrackResult {
-	identifier := resolvedTrackIdentifier(ctx, item.Track)
+	identifier := unresolvedTrackIdentifier(item.Track)
 	if identifier == "" {
 		return preparedTrackResult{state: trackPreparationFailed}
 	}
 
-	node := p.node()
-	if node == nil {
+	// Only probe YouTube tracks.
+	if YouTubeVideoID(identifier) == "" {
 		return preparedTrackResult{state: trackPreparationFailed}
 	}
 
-	loaded, err := loadPlayableTracks(ctx, node, identifier)
+	fmt.Printf("[prepare] probing %s\n", trackTitle(item.Track))
+	result, err := probeIdentifier(ctx, identifier)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "queue preparation normal lavalink load failed for %s: %v\n", trackTitle(item.Track), err)
-		return preparedTrackResult{
-			state:      trackPreparationPremiumLikely,
-			identifier: identifier,
-		}
-	}
-	if len(loaded.Tracks) == 0 {
-		return preparedTrackResult{
-			state:      trackPreparationPremiumLikely,
-			identifier: identifier,
-		}
+		fmt.Fprintf(os.Stderr, "[prepare] probe error for %s: %v\n", trackTitle(item.Track), err)
 	}
 
-	preparedTrack := loaded.Tracks[0]
-	return preparedTrackResult{
-		state:      trackPreparationResolvedLavalink,
-		identifier: identifier,
-		track:      &preparedTrack,
+	switch result {
+	case probeResultPremium:
+		fmt.Printf("[prepare] %s -> premium, will use premium plugin\n", trackTitle(item.Track))
+		return preparedTrackResult{
+			state:      trackPreparationPremiumLikely,
+			identifier: identifier,
+		}
+
+	case probeResultUnavailable:
+		fmt.Printf("[prepare] %s -> unavailable, trying resolver\n", trackTitle(item.Track))
+		resolved := resolvedYouTubeIdentifier(ctx, identifier)
+		if resolved == identifier {
+			fmt.Fprintf(os.Stderr, "[prepare] resolver returned same identifier for %s\n", trackTitle(item.Track))
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		fmt.Printf("[prepare] %s resolved -> %s, pre-loading via lavalink\n", trackTitle(item.Track), resolved)
+		node := p.node()
+		if node == nil {
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		loaded, err := loadPlayableTracks(ctx, node, resolved)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[prepare] resolved load failed for %s: %v\n", trackTitle(item.Track), err)
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		if len(loaded.Tracks) == 0 {
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		preparedTrack := loaded.Tracks[0]
+		return preparedTrackResult{
+			state:      trackPreparationResolvedLavalink,
+			identifier: resolved,
+			track:      &preparedTrack,
+		}
+
+	default:
+		fmt.Printf("[prepare] %s -> available, pre-loading via lavalink\n", trackTitle(item.Track))
+		node := p.node()
+		if node == nil {
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		loaded, err := loadPlayableTracks(ctx, node, identifier)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[prepare] load failed for %s: %v\n", trackTitle(item.Track), err)
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		if len(loaded.Tracks) == 0 {
+			return preparedTrackResult{state: trackPreparationFailed}
+		}
+		preparedTrack := loaded.Tracks[0]
+		return preparedTrackResult{
+			state:      trackPreparationResolvedLavalink,
+			identifier: identifier,
+			track:      &preparedTrack,
+		}
 	}
 }
 

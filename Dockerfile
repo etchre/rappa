@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/rappa .
 
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates py3-pip python3 tzdata \
+RUN apk add --no-cache ca-certificates nodejs py3-pip python3 tzdata \
   && python3 -m pip install --break-system-packages --no-cache-dir yt-dlp ytmusicapi
 
 WORKDIR /app

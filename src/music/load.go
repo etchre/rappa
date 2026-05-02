@@ -18,6 +18,7 @@ import (
 const youtubeSearchPrefix = "ytsearch:"
 const premiumSourcePrefix = "rappa-premium:"
 const youtubeResolverTimeout = 10 * time.Second
+const ytDlpProbeTimeout = 10 * time.Second
 
 const (
 	collectionKindAlbum    = "album"
@@ -60,6 +61,74 @@ func (p *Player) Search(ctx context.Context, query string, limit int) ([]lavalin
 	}
 
 	return tracks, nil
+}
+
+type probedLoad struct {
+	playableLoad
+	UsedPremiumRoute bool
+}
+
+func loadWithProbe(ctx context.Context, node disgolink.Node, identifier string) (probedLoad, error) {
+	identifier = strings.TrimSpace(identifier)
+
+	// Only probe single YouTube tracks (not playlists, albums, or non-YouTube URLs).
+	if YouTubeVideoID(identifier) == "" {
+		loaded, err := loadPlayableTracks(ctx, node, identifier)
+		return probedLoad{playableLoad: loaded}, err
+	}
+
+	fmt.Printf("[probe] probing %s\n", identifier)
+	result, err := probeIdentifier(ctx, identifier)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[probe] yt-dlp probe error for %s: %v\n", identifier, err)
+	}
+
+	switch result {
+	case probeResultPremium:
+		fmt.Printf("[probe] %s -> premium, loading metadata via lavalink\n", identifier)
+		metaLoaded, metaErr := loadPlayableTracks(ctx, node, identifier)
+
+		fmt.Printf("[probe] %s -> loading stream via premium plugin\n", identifier)
+		loaded, err := loadPlayableTracks(ctx, node, premiumPlayableIdentifier(identifier))
+		if err != nil {
+			return probedLoad{}, err
+		}
+
+		// Copy YouTube metadata onto the premium stream track.
+		if metaErr == nil && len(metaLoaded.Tracks) > 0 && len(loaded.Tracks) > 0 {
+			for i := range loaded.Tracks {
+				loaded.Tracks[i].Info = metaLoaded.Tracks[0].Info
+			}
+			fmt.Printf("[probe] copied metadata: %s\n", trackTitle(loaded.Tracks[0]))
+		}
+
+		return probedLoad{playableLoad: loaded, UsedPremiumRoute: true}, nil
+
+	case probeResultUnavailable:
+		fmt.Printf("[probe] %s -> unavailable, trying resolver\n", identifier)
+		resolved := resolvedYouTubeIdentifier(ctx, identifier)
+		if resolved == identifier {
+			fmt.Fprintf(os.Stderr, "[probe] resolver returned same unavailable identifier %s\n", identifier)
+			return probedLoad{}, fmt.Errorf("resolver returned same unavailable identifier %q", identifier)
+		}
+		fmt.Printf("[probe] resolved %s -> %s, loading via lavalink\n", identifier, resolved)
+		loaded, err := loadPlayableTracks(ctx, node, resolved)
+		return probedLoad{playableLoad: loaded}, err
+
+	default:
+		fmt.Printf("[probe] %s -> available, loading via lavalink\n", identifier)
+		loaded, err := loadPlayableTracks(ctx, node, identifier)
+		return probedLoad{playableLoad: loaded}, err
+	}
+}
+
+func isYouTubeURL(input string) bool {
+	parsed, err := url.Parse(input)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	return host == "youtube.com" || host == "www.youtube.com" || host == "music.youtube.com" || host == "youtu.be"
 }
 
 func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier string) (playableLoad, error) {
@@ -124,12 +193,10 @@ func loadPlayableTracks(ctx context.Context, node disgolink.Node, identifier str
 func playableIdentifierForNode(ctx context.Context, node disgolink.Node, input string) string {
 	input = strings.TrimSpace(input)
 	if strings.HasPrefix(input, premiumSourcePrefix) {
-		identifier := strings.TrimPrefix(input, premiumSourcePrefix)
-		return premiumSourcePrefix + resolvedYouTubeIdentifier(ctx, identifier)
+		return input
 	}
 
-	identifier := playableIdentifier(resolvedYouTubeIdentifier(ctx, input))
-	return identifier
+	return playableIdentifier(input)
 }
 
 func premiumPlayableIdentifier(input string) string {
@@ -236,6 +303,88 @@ func originalTrackIdentifier(track lavalink.Track) string {
 	}
 
 	return track.Info.Identifier
+}
+
+func unresolvedTrackIdentifier(track lavalink.Track) string {
+	for _, candidate := range []string{originalTrackIdentifier(track), track.Info.Identifier} {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+		if musicURL := YouTubeMusicTrackURL(candidate); musicURL != "" {
+			return musicURL
+		}
+		return candidate
+	}
+
+	return ""
+}
+
+type probeResult int
+
+const (
+	probeResultAvailable   probeResult = iota // track is playable via standard Lavalink
+	probeResultPremium                        // track requires the premium plugin
+	probeResultUnavailable                    // stale or region-blocked; needs resolver
+)
+
+func (r probeResult) String() string {
+	switch r {
+	case probeResultAvailable:
+		return "available"
+	case probeResultPremium:
+		return "premium"
+	case probeResultUnavailable:
+		return "unavailable"
+	default:
+		return "unknown"
+	}
+}
+
+func probeIdentifier(ctx context.Context, identifier string) (probeResult, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, ytDlpProbeTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(
+		probeCtx,
+		ytDlpCommand(),
+		"--no-config",
+		"--no-warnings",
+		"--print", "%(id)s",
+		"--extractor-args",
+		"youtube:player_client=web",
+		identifier,
+	)
+	output, err := cmd.CombinedOutput()
+	if probeCtx.Err() != nil {
+		return probeResultAvailable, fmt.Errorf("yt-dlp probe timed out")
+	}
+
+	text := strings.ToLower(string(output))
+
+	if err == nil {
+		return probeResultAvailable, nil
+	}
+
+	if strings.Contains(text, "only available to music premium members") ||
+		(strings.Contains(text, "music premium") && strings.Contains(text, "member")) {
+		return probeResultPremium, nil
+	}
+
+	if strings.Contains(text, "video unavailable") ||
+		strings.Contains(text, "video is not available") ||
+		strings.Contains(text, "this video is no longer available") {
+		return probeResultUnavailable, nil
+	}
+
+	return probeResultAvailable, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
+}
+
+func ytDlpCommand() string {
+	if value := strings.TrimSpace(os.Getenv("YTDLP_COMMAND")); value != "" {
+		return value
+	}
+	return "yt-dlp"
 }
 
 func YouTubeVideoID(identifier string) string {

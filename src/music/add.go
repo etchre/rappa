@@ -21,7 +21,7 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		return QueueResult{}, fmt.Errorf("no lavalink node is available")
 	}
 
-	loaded, err := loadPlayableTracks(ctx, node, identifier)
+	loaded, err := loadWithProbe(ctx, node, identifier)
 	if err != nil {
 		return QueueResult{}, err
 	}
@@ -30,6 +30,11 @@ func (p *Player) PlayNow(ctx context.Context, guildID snowflake.ID, identifier s
 		tracks = shuffledTracks(tracks)
 	}
 	items := p.queuedTracks(tracks, options)
+	if loaded.UsedPremiumRoute {
+		for i := range items {
+			items[i].UsedPremiumRoute = true
+		}
+	}
 	item := items[0]
 
 	p.mu.Lock()
@@ -76,7 +81,7 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		return QueueResult{}, fmt.Errorf("no lavalink node is available")
 	}
 
-	loaded, err := loadPlayableTracks(ctx, node, identifier)
+	loaded, err := loadWithProbe(ctx, node, identifier)
 	if err != nil {
 		return QueueResult{}, err
 	}
@@ -85,6 +90,11 @@ func (p *Player) add(ctx context.Context, guildID snowflake.ID, identifier strin
 		tracks = shuffledTracks(tracks)
 	}
 	items := p.queuedTracks(tracks, options)
+	if loaded.UsedPremiumRoute {
+		for i := range items {
+			items[i].UsedPremiumRoute = true
+		}
+	}
 	item := items[0]
 
 	p.mu.Lock()

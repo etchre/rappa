@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
 	"github.com/disgoorg/disgolink/v3/lavalink"
@@ -29,6 +30,8 @@ type guildPlayback struct {
 	paused              bool
 	looping             bool
 	premiumFallbackBusy bool
+	exceptionTrack      string    // encoded track that received an exception
+	playStartTime       time.Time // when the current track started playing
 }
 
 type queuedTrack struct {
@@ -41,6 +44,7 @@ type queuedTrack struct {
 	PreparedIdentifier     string
 	PreparedTrack          *lavalink.Track
 	PremiumAllowed         bool
+	UsedPremiumRoute       bool
 	RequesterName          string
 	RequesterID            string
 	PremiumAllowedUserIDs  string
