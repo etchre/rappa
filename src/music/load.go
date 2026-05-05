@@ -99,7 +99,7 @@ func loadWithProbe(ctx context.Context, node disgolink.Node, identifier string) 
 			for i := range loaded.Tracks {
 				loaded.Tracks[i].Info = metaLoaded.Tracks[0].Info
 			}
-			fmt.Printf("[probe] copied metadata: %s\n", trackTitle(loaded.Tracks[0]))
+			fmt.Printf("[probe] copied metadata: %s\n", TrackTitle(loaded.Tracks[0]))
 		}
 
 		return probedLoad{playableLoad: loaded, UsedPremiumRoute: true}, nil

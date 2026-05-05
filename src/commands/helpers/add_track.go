@@ -38,10 +38,6 @@ func PlayLimit(data discord.SlashCommandInteractionData) int {
 }
 
 func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate, link string, mode AddMode) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
 	if link == "" {
 		commandrouter.RespondError(event, "A link is required.")
 		return

@@ -44,11 +44,6 @@ func handleYolk(ctx commandrouter.Context, event *events.ApplicationCommandInter
 }
 
 func handleYolkAll(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	if err := event.DeferCreateMessage(false); err != nil {
 		fmt.Fprintf(os.Stderr, "defer yolk response failed: %v\n", err)
 		return

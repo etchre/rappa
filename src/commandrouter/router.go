@@ -80,5 +80,11 @@ func (r Router) Handle(ctx context.Context, event *events.ApplicationCommandInte
 		return
 	}
 	commandContext.GuildID = *guildID
+
+	if commandContext.Player == nil {
+		RespondError(event, "Music player is not ready yet.")
+		return
+	}
+
 	command.Handle(commandContext, event)
 }

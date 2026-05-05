@@ -19,11 +19,6 @@ var Restart = commandrouter.Command{
 }
 
 func handleRestart(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	track, err := ctx.Player.Restart(ctx.Context, ctx.GuildID)
 	if err != nil {
 		commandrouter.RespondError(event, fmt.Sprintf("Failed to restart track: %v", err))

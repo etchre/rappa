@@ -47,11 +47,11 @@ func debugTrackPlayError(player disgolink.Player, track lavalink.Track, err erro
 	fmt.Printf(
 		"[lavalink-debug] play update failed node=%q track=%q error=%v\n",
 		playerNodeName(player),
-		trackTitle(track),
+		TrackTitle(track),
 		err,
 	)
 	if looksAccountGated(err.Error()) {
-		fmt.Printf("[lavalink-debug] likely account/premium-gated track track=%q\n", trackTitle(track))
+		fmt.Printf("[lavalink-debug] likely account/premium-gated track track=%q\n", TrackTitle(track))
 	}
 }
 
@@ -85,14 +85,6 @@ func playerNodeName(player disgolink.Player) string {
 	}
 
 	return nodeName(player.Node())
-}
-
-func trackTitle(track lavalink.Track) string {
-	if track.Info.Author == "" {
-		return track.Info.Title
-	}
-
-	return track.Info.Author + " - " + track.Info.Title
 }
 
 func looksAccountGated(values ...string) bool {

@@ -31,11 +31,6 @@ var Move = commandrouter.Command{
 }
 
 func handleMove(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	data := event.SlashCommandInteractionData()
 	from := data.Int("from")
 	to := data.Int("to")

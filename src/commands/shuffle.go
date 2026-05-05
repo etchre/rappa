@@ -19,11 +19,6 @@ var Shuffle = commandrouter.Command{
 }
 
 func handleShuffle(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	count, err := ctx.Player.ShuffleQueue(ctx.GuildID)
 	if err != nil {
 		commandrouter.RespondError(event, fmt.Sprintf("Failed to shuffle queue: %v", err))

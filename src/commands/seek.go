@@ -27,11 +27,6 @@ var Seek = commandrouter.Command{
 }
 
 func handleSeek(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	secs := event.SlashCommandInteractionData().Int("secs")
 	offsetMs := lavalink.Duration(secs) * 1000
 

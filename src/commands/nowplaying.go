@@ -20,11 +20,6 @@ var NowPlaying = commandrouter.Command{
 }
 
 func handleNowPlaying(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	snapshot := ctx.Player.Queue(ctx.GuildID)
 	if snapshot.Current == nil {
 		commandrouter.RespondError(event, "Nothing is playing.")

@@ -18,11 +18,6 @@ var Leave = commandrouter.Command{
 }
 
 func handleLeave(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
-	if ctx.Player == nil {
-		commandrouter.RespondError(event, "Music player is not ready yet.")
-		return
-	}
-
 	if err := ctx.Player.Stop(ctx.Context, ctx.GuildID); err != nil {
 		commandrouter.RespondError(event, fmt.Sprintf("Failed to stop playback: %v", err))
 		return
