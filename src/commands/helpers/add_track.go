@@ -90,7 +90,7 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		return
 	}
 
-	title := TrackTitle(result.Track)
+	title := music.TrackTitle(result.Track)
 	if result.Queued {
 		content, embed := QueuedEmbed(result, event.User().Mention())
 		commandrouter.UpdateResponseContentEmbed(event, content, embed)

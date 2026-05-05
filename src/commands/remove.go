@@ -8,6 +8,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var Remove = commandrouter.Command{
@@ -34,5 +35,5 @@ func handleRemove(ctx commandrouter.Context, event *events.ApplicationCommandInt
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Removed from queue: %s", helpers.TrackTitle(track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Removed from queue: %s", music.TrackTitle(track)))
 }

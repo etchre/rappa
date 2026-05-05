@@ -9,6 +9,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var Skip = commandrouter.Command{
@@ -36,7 +37,7 @@ func handleSkip(ctx commandrouter.Context, event *events.ApplicationCommandInter
 			return
 		}
 
-		commandrouter.RespondError(event, fmt.Sprintf("Skipped. Now playing: %s", helpers.TrackTitle(*result.Next)))
+		commandrouter.RespondError(event, fmt.Sprintf("Skipped. Now playing: %s", music.TrackTitle(*result.Next)))
 		return
 	}
 	if !result.Stopped {

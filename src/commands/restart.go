@@ -8,6 +8,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var Restart = commandrouter.Command{
@@ -25,5 +26,5 @@ func handleRestart(ctx commandrouter.Context, event *events.ApplicationCommandIn
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Restarted: %s", helpers.TrackTitle(track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Restarted: %s", music.TrackTitle(track)))
 }

@@ -8,6 +8,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var Move = commandrouter.Command{
@@ -41,5 +42,5 @@ func handleMove(ctx commandrouter.Context, event *events.ApplicationCommandInter
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Moved %s to position %d.", helpers.TrackTitle(track), to))
+	commandrouter.RespondError(event, fmt.Sprintf("Moved %s to position %d.", music.TrackTitle(track), to))
 }

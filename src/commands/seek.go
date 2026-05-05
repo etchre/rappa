@@ -9,6 +9,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var Seek = commandrouter.Command{
@@ -43,6 +44,6 @@ func handleSeek(ctx commandrouter.Context, event *events.ApplicationCommandInter
 	}
 
 	commandrouter.RespondError(event, fmt.Sprintf("Seeked %s %ds in %s [%s/%s]",
-		direction, secs, helpers.TrackTitle(result.Track),
+		direction, secs, music.TrackTitle(result.Track),
 		helpers.FormatDuration(result.Position), helpers.FormatDuration(result.Track.Info.Length)))
 }

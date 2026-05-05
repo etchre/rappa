@@ -37,7 +37,7 @@ func songQueuedEmbed(track lavalink.Track, position int, requester string) disco
 func collectionQueuedEmbed(result music.QueueResult, requester string) discord.Embed {
 	title := result.CollectionName
 	if title == "" {
-		title = TrackTitle(result.Track)
+		title = music.TrackTitle(result.Track)
 	}
 
 	embed := discord.Embed{}.

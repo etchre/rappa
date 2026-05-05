@@ -31,12 +31,6 @@ func (p *Player) TogglePause(ctx context.Context, guildID snowflake.ID) (PauseRe
 		return PauseResult{}, fmt.Errorf("update pause state: %w", err)
 	}
 
-	if paused {
-		p.notifyPlaybackActive(ctx, guildID)
-	} else {
-		p.notifyPlaybackActive(ctx, guildID)
-	}
-
 	return PauseResult{Track: current, Paused: paused, Changed: true}, nil
 }
 

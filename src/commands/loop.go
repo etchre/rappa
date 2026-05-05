@@ -8,6 +8,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var Loop = commandrouter.Command{
@@ -29,5 +30,5 @@ func handleLoop(ctx commandrouter.Context, event *events.ApplicationCommandInter
 	if result.Looping {
 		status = "enabled"
 	}
-	commandrouter.RespondError(event, fmt.Sprintf("Loop %s for: %s", status, helpers.TrackTitle(result.Track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Loop %s for: %s", status, music.TrackTitle(result.Track)))
 }

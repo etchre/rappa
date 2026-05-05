@@ -11,6 +11,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 func HandleAutocomplete(ctx commandrouter.Context, event *events.AutocompleteInteractionCreate) {
@@ -58,7 +59,7 @@ func isPlayCommand(name string) bool {
 }
 
 func autocompleteName(track lavalink.Track) string {
-	return fmt.Sprintf("%s [%s]", helpers.TrackTitle(track), helpers.FormatDuration(track.Info.Length))
+	return fmt.Sprintf("%s [%s]", music.TrackTitle(track), helpers.FormatDuration(track.Info.Length))
 }
 
 func autocompleteValue(track lavalink.Track) string {

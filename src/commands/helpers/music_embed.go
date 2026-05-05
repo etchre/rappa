@@ -6,6 +6,8 @@ import (
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgolink/v3/lavalink"
+
+	"ytdlpPlayer/music"
 )
 
 const musicEmbedColor = 0x2ECC71
@@ -93,20 +95,17 @@ func FormatQueue(current *lavalink.Track, queued []lavalink.Track) string {
 
 	if current != nil {
 		builder.WriteString("**Now playing: ")
-		builder.WriteString(TrackTitle(*current))
+		builder.WriteString(music.TrackTitle(*current))
 		builder.WriteString("**\n")
 	}
 
 	for i, track := range queued {
-		builder.WriteString(fmt.Sprintf("%d. %s\n", i+1, TrackTitle(track)))
+		builder.WriteString(fmt.Sprintf("%d. %s\n", i+1, music.TrackTitle(track)))
 	}
 
 	return builder.String()
 }
 
-func TrackTitle(track lavalink.Track) string {
-	return fmt.Sprintf("%s - %s", track.Info.Author, track.Info.Title)
-}
 
 func NumberedTracksFrom(tracks []lavalink.Track, firstNumber int) string {
 	if len(tracks) == 0 {
@@ -115,7 +114,7 @@ func NumberedTracksFrom(tracks []lavalink.Track, firstNumber int) string {
 
 	var builder strings.Builder
 	for i, track := range tracks {
-		builder.WriteString(fmt.Sprintf("`%d.` %s `[%s]`\n", firstNumber+i, TrackTitle(track), FormatDuration(track.Info.Length)))
+		builder.WriteString(fmt.Sprintf("`%d.` %s `[%s]`\n", firstNumber+i, music.TrackTitle(track), FormatDuration(track.Info.Length)))
 	}
 
 	return builder.String()

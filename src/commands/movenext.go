@@ -8,6 +8,7 @@ import (
 
 	"ytdlpPlayer/commandrouter"
 	"ytdlpPlayer/commands/helpers"
+	"ytdlpPlayer/music"
 )
 
 var MoveNext = commandrouter.Command{
@@ -34,5 +35,5 @@ func handleMoveNext(ctx commandrouter.Context, event *events.ApplicationCommandI
 		return
 	}
 
-	commandrouter.RespondError(event, fmt.Sprintf("Moved to queue position #1: %s", helpers.TrackTitle(track)))
+	commandrouter.RespondError(event, fmt.Sprintf("Moved to queue position #1: %s", music.TrackTitle(track)))
 }
