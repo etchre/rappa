@@ -4,8 +4,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
 )
 
 var Play = commandrouter.Command{

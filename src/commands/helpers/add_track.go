@@ -8,8 +8,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/music"
+	"rappa/commandrouter"
+	"rappa/music"
 )
 
 type AddMode int

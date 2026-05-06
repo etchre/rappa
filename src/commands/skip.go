@@ -7,9 +7,9 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
-	"ytdlpPlayer/music"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
+	"rappa/music"
 )
 
 var Skip = commandrouter.Command{

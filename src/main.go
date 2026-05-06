@@ -7,7 +7,7 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"ytdlpPlayer/bot"
+	"rappa/bot"
 )
 
 func main() {

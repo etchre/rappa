@@ -15,10 +15,10 @@ import (
 	"github.com/disgoorg/disgolink/v3/lavalink"
 	"github.com/disgoorg/snowflake/v2"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands"
-	"ytdlpPlayer/commands/helpers"
-	"ytdlpPlayer/music"
+	"rappa/commandrouter"
+	"rappa/commands"
+	"rappa/commands/helpers"
+	"rappa/music"
 )
 
 type app struct {

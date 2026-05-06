@@ -7,9 +7,9 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgolink/v3/lavalink"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
-	"ytdlpPlayer/music"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
+	"rappa/music"
 )
 
 var Seek = commandrouter.Command{

@@ -6,7 +6,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
+	"rappa/commandrouter"
 )
 
 var Stop = commandrouter.Command{

@@ -4,8 +4,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
 )
 
 const diddyURL = "https://youtu.be/B_1KwX2M-Mc"

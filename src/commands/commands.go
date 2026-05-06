@@ -3,8 +3,8 @@ package commands
 import (
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
 )
 
 func All(includeJokes bool) map[string]commandrouter.Command {

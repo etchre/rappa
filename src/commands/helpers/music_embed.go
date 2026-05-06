@@ -7,7 +7,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgolink/v3/lavalink"
 
-	"ytdlpPlayer/music"
+	"rappa/music"
 )
 
 const musicEmbedColor = 0x2ECC71

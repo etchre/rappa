@@ -4,8 +4,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
 )
 
 const fackURL = "https://www.youtube.com/watch?v=BOI8OGIy6cA"

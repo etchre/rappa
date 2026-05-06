@@ -6,7 +6,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgolink/v3/lavalink"
 
-	"ytdlpPlayer/music"
+	"rappa/music"
 )
 
 func QueuedEmbed(result music.QueueResult, requester string) (string, discord.Embed) {

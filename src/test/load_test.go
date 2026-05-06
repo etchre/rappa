@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"ytdlpPlayer/music"
+	"rappa/music"
 )
 
 func TestYouTubeMusicTrackURL(t *testing.T) {

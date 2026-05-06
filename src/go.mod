@@ -1,4 +1,4 @@
-module ytdlpPlayer
+module rappa
 
 go 1.26.2
 

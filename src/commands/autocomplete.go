@@ -9,9 +9,9 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgolink/v3/lavalink"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands/helpers"
-	"ytdlpPlayer/music"
+	"rappa/commandrouter"
+	"rappa/commands/helpers"
+	"rappa/music"
 )
 
 func HandleAutocomplete(ctx commandrouter.Context, event *events.AutocompleteInteractionCreate) {

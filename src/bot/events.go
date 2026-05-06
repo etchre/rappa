@@ -9,8 +9,8 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/snowflake/v2"
 
-	"ytdlpPlayer/commandrouter"
-	"ytdlpPlayer/commands"
+	"rappa/commandrouter"
+	"rappa/commands"
 )
 
 func (app *app) onVoiceStateUpdate(ctx context.Context) func(event *events.GuildVoiceStateUpdate) {
