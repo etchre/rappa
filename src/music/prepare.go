@@ -8,6 +8,8 @@ import (
 
 	"github.com/disgoorg/disgolink/v3/lavalink"
 	"github.com/disgoorg/snowflake/v2"
+
+	"rappa/utils"
 )
 
 const defaultQueuePreparationLookahead = 5
@@ -75,27 +77,27 @@ func (p *Player) prepareQueuedTrack(ctx context.Context, item queuedTrack) prepa
 	}
 
 	// Only probe YouTube tracks.
-	if YouTubeVideoID(identifier) == "" {
+	if utils.YouTubeVideoID(identifier) == "" {
 		return preparedTrackResult{state: trackPreparationFailed}
 	}
 
 	slog.Debug("probing track for preparation", "track", TrackTitle(item.Track))
-	result, err := probeIdentifier(ctx, identifier)
+	result, err := utils.ProbeIdentifier(ctx, identifier)
 	if err != nil {
 		slog.Error("probe failed during preparation", "track", TrackTitle(item.Track), "err", err)
 	}
 
 	switch result {
-	case probeResultPremium:
+	case utils.ProbeResultPremium:
 		slog.Debug("prep result: premium", "track", TrackTitle(item.Track))
 		return preparedTrackResult{
 			state:      trackPreparationPremiumLikely,
 			identifier: identifier,
 		}
 
-	case probeResultUnavailable:
+	case utils.ProbeResultUnavailable:
 		slog.Debug("prep result: unavailable, trying resolver", "track", TrackTitle(item.Track))
-		resolved := resolvedYouTubeIdentifier(ctx, identifier)
+		resolved := utils.ResolvedYouTubeIdentifier(ctx, identifier)
 		if resolved == identifier {
 			slog.Warn("resolver returned same identifier during prep", "track", TrackTitle(item.Track))
 			return preparedTrackResult{state: trackPreparationFailed}
