@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
-	"os"
 	"time"
 
 	"github.com/disgoorg/disgo/discord"
@@ -45,7 +45,7 @@ func handleYolk(ctx commandrouter.Context, event *events.ApplicationCommandInter
 
 func handleYolkAll(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) {
 	if err := event.DeferCreateMessage(false); err != nil {
-		fmt.Fprintf(os.Stderr, "defer yolk response failed: %v\n", err)
+		slog.Error("defer yolk response failed", "err", err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func handleYolkAll(ctx commandrouter.Context, event *events.ApplicationCommandIn
 	for _, i := range rand.Perm(len(yolkURLs)) {
 		_, err := ctx.Player.Add(ctx.Context, ctx.GuildID, yolkURLs[i], options)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "yolk add failed for %s: %v\n", yolkURLs[i], err)
+			slog.Error("yolk add failed", "url", yolkURLs[i], "err", err)
 			continue
 		}
 		added++

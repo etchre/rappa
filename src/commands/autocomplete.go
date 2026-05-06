@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 	"strings"
 
 	"github.com/disgoorg/disgo/discord"
@@ -33,7 +33,7 @@ func HandleAutocomplete(ctx commandrouter.Context, event *events.AutocompleteInt
 
 	tracks, err := ctx.Player.Search(ctx.Context, query, 5)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "autocomplete search failed: %v\n", err)
+		slog.Error("autocomplete search failed", "err", err)
 		respondAutocomplete(event, nil)
 		return
 	}
@@ -89,6 +89,6 @@ func limitAutocompleteText(value string, limit int) string {
 
 func respondAutocomplete(event *events.AutocompleteInteractionCreate, choices []discord.AutocompleteChoice) {
 	if err := event.AutocompleteResult(choices); err != nil {
-		fmt.Fprintf(os.Stderr, "autocomplete response failed: %v\n", err)
+		slog.Error("autocomplete response failed", "err", err)
 	}
 }

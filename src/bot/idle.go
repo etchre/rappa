@@ -2,8 +2,7 @@ package bot
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -81,12 +80,12 @@ func (app *app) cancelIdleDisconnect(_ context.Context, guildID snowflake.ID) {
 }
 
 func (app *app) disconnectFromVoice(ctx context.Context, guildID snowflake.ID, reason string) {
-	fmt.Printf("Disconnecting from voice after %s\n", reason)
+	slog.Info("disconnecting from voice", "reason", reason)
 	if err := app.player.Stop(ctx, guildID); err != nil {
-		fmt.Fprintf(os.Stderr, "stop before voice disconnect failed: %v\n", err)
+		slog.Error("stop before voice disconnect failed", "err", err)
 	}
 	if err := app.discord.UpdateVoiceState(ctx, guildID, nil, false, false); err != nil {
-		fmt.Fprintf(os.Stderr, "voice disconnect failed: %v\n", err)
+		slog.Error("voice disconnect failed", "err", err)
 	}
 	app.setBotVoiceChannel(guildID, nil)
 	app.idle.cancel(guildID)

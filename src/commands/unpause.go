@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -26,12 +26,12 @@ func handleUnpause(ctx commandrouter.Context, event *events.ApplicationCommandIn
 	}
 	if !result.Changed {
 		if err := event.CreateMessage(discord.NewMessageCreate().WithContent("Playback is already running.")); err != nil {
-			fmt.Fprintf(os.Stderr, "unpause response failed: %v\n", err)
+			slog.Error("unpause response failed", "err", err)
 		}
 		return
 	}
 
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent("Resumed playback.")); err != nil {
-		fmt.Fprintf(os.Stderr, "unpause response failed: %v\n", err)
+		slog.Error("unpause response failed", "err", err)
 	}
 }

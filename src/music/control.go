@@ -3,7 +3,7 @@ package music
 import (
 	"context"
 	"fmt"
-	"os"
+	"log/slog"
 	"time"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
@@ -46,7 +46,7 @@ func (p *Player) Skip(ctx context.Context, guildID snowflake.ID) (SkipResult, er
 	if needsAsyncLoad {
 		go func() {
 			if err := p.playQueuedTrack(ctx, guildID, next); err != nil {
-				fmt.Fprintf(os.Stderr, "[skip] async premium play failed: %v\n", err)
+				slog.Error("async premium play failed during skip", "err", err)
 			}
 			go p.prepareQueueAhead(guildID)
 		}()
@@ -102,14 +102,14 @@ func (p *Player) OnTrackEnd(player disgolink.Player, event lavalink.TrackEndEven
 	p.mu.Unlock()
 
 	if hadException || (!startTime.IsZero() && elapsed < 3*time.Second) {
-		fmt.Printf("[failure] track ended suspiciously fast (%.1fs) or after exception, treating as failure: %s\n",
-			elapsed.Seconds(), TrackTitle(event.Track))
+		slog.Debug("track ended suspiciously fast, treating as failure",
+			"elapsed_s", elapsed.Seconds(), "track", TrackTitle(event.Track))
 		p.handlePlaybackFailure(context.Background(), player, event.Track)
 		return
 	}
 
 	if err := p.playNext(context.Background(), player.GuildID()); err != nil {
-		fmt.Fprintf(os.Stderr, "play next failed: %v\n", err)
+		slog.Error("play next failed", "err", err)
 	}
 }
 
@@ -134,17 +134,17 @@ func (p *Player) handlePlaybackFailure(ctx context.Context, player disgolink.Pla
 	}
 	if playback.current == nil || playback.current.Track.Encoded != track.Encoded {
 		p.mu.Unlock()
-		fmt.Printf("[failure] ignored stale playback failure for %s\n", TrackTitle(track))
+		slog.Debug("ignored stale playback failure", "track", TrackTitle(track))
 		return
 	}
 	if playback.current.ResolvedRetryAttempted {
 		p.mu.Unlock()
-		fmt.Printf("[failure] already retried %s, falling back to search recovery\n", TrackTitle(track))
+		slog.Debug("already retried, falling back to search recovery", "track", TrackTitle(track))
 		if p.recoverFailedTrackBySearch(ctx, guildID, track) {
 			return
 		}
 		if err := p.advanceAfterFailedTrack(ctx, guildID, track); err != nil {
-			fmt.Fprintf(os.Stderr, "[failure] advance after failed track: %v\n", err)
+			slog.Error("advance after failed track", "err", err)
 		}
 		return
 	}
@@ -158,17 +158,17 @@ func (p *Player) handlePlaybackFailure(ctx context.Context, player disgolink.Pla
 	if usedPremium {
 		route = "premium"
 	}
-	fmt.Printf("[failure] playback failed for %s (route=%s), retrying with resolver\n", TrackTitle(track), route)
+	slog.Debug("playback failed, retrying with resolver", "track", TrackTitle(track), "route", route)
 	go p.retryWithResolver(ctx, guildID, track, usedPremium)
 }
 
 func (p *Player) retryWithResolver(ctx context.Context, guildID snowflake.ID, failedTrack lavalink.Track, usedPremium bool) {
 	defer p.setPremiumFallbackBusy(guildID, false)
 
-	fmt.Printf("[retry] resolving alternate video ID for %s\n", TrackTitle(failedTrack))
+	slog.Debug("resolving alternate video ID for retry", "track", TrackTitle(failedTrack))
 	identifier := resolvedTrackIdentifier(ctx, failedTrack)
 	if identifier == "" {
-		fmt.Fprintf(os.Stderr, "[retry] resolver could not determine track URL for %s\n", TrackTitle(failedTrack))
+		slog.Warn("retry resolver could not determine track URL", "track", TrackTitle(failedTrack))
 		p.failWithSearchRecovery(ctx, guildID, failedTrack)
 		return
 	}
@@ -176,29 +176,29 @@ func (p *Player) retryWithResolver(ctx context.Context, guildID snowflake.ID, fa
 	var loadIdentifier string
 	if usedPremium {
 		loadIdentifier = premiumPlayableIdentifier(identifier)
-		fmt.Printf("[retry] resolved %s -> %s, retrying via premium plugin\n", TrackTitle(failedTrack), identifier)
+		slog.Debug("retry resolved, using premium plugin", "track", TrackTitle(failedTrack), "resolved", identifier)
 	} else {
 		loadIdentifier = identifier
-		fmt.Printf("[retry] resolved %s -> %s, retrying via lavalink\n", TrackTitle(failedTrack), identifier)
+		slog.Debug("retry resolved, using lavalink", "track", TrackTitle(failedTrack), "resolved", identifier)
 	}
 
 	node := p.node()
 	if node == nil {
-		fmt.Fprintf(os.Stderr, "[retry] no lavalink node available\n")
+		slog.Error("no lavalink node available for retry")
 		if err := p.advanceAfterFailedTrack(ctx, guildID, failedTrack); err != nil {
-			fmt.Fprintf(os.Stderr, "[retry] advance after failed track: %v\n", err)
+			slog.Error("advance after failed track during retry", "err", err)
 		}
 		return
 	}
 
 	loaded, err := loadPlayableTracks(ctx, node, loadIdentifier)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[retry] load failed for %s: %v\n", TrackTitle(failedTrack), err)
+		slog.Error("retry load failed", "track", TrackTitle(failedTrack), "err", err)
 		p.failWithSearchRecovery(ctx, guildID, failedTrack)
 		return
 	}
 	if len(loaded.Tracks) == 0 {
-		fmt.Fprintf(os.Stderr, "[retry] load returned no tracks for %s\n", TrackTitle(failedTrack))
+		slog.Error("retry load returned no tracks", "track", TrackTitle(failedTrack))
 		p.failWithSearchRecovery(ctx, guildID, failedTrack)
 		return
 	}
@@ -217,7 +217,7 @@ func (p *Player) retryWithResolver(ctx context.Context, guildID snowflake.ID, fa
 
 	if shouldPlay {
 		if err := p.playTrack(ctx, guildID, retryTrack); err != nil {
-			fmt.Fprintf(os.Stderr, "[retry] play failed for %s: %v\n", TrackTitle(failedTrack), err)
+			slog.Error("retry play failed", "track", TrackTitle(failedTrack), "err", err)
 			p.failWithSearchRecovery(ctx, guildID, failedTrack)
 		}
 	}
@@ -270,14 +270,14 @@ func (p *Player) playQueuedTrack(ctx context.Context, guildID snowflake.ID, item
 	switch item.Preparation {
 	case trackPreparationResolvedLavalink:
 		if item.PreparedTrack != nil {
-			fmt.Printf("[queue] using prepared lavalink track for %s\n", TrackTitle(item.Track))
+			slog.Debug("using prepared lavalink track", "track", TrackTitle(item.Track))
 			preparedTrack := *item.PreparedTrack
 			p.replaceCurrentTrack(guildID, item.ID, preparedTrack)
 			return p.playTrack(ctx, guildID, preparedTrack)
 		}
 	case trackPreparationPremiumLikely:
 		if item.PreparedIdentifier != "" {
-			fmt.Printf("[queue] using prepared premium route for %s\n", TrackTitle(item.Track))
+			slog.Debug("using prepared premium route", "track", TrackTitle(item.Track))
 			return p.playPreparedPremiumTrack(ctx, guildID, item)
 		}
 	}
@@ -333,7 +333,7 @@ func (p *Player) playTrack(ctx context.Context, guildID snowflake.ID, track lava
 	p.mu.Unlock()
 
 	p.notifyPlaybackActive(ctx, guildID)
-	fmt.Printf("Now playing on Lavalink node %q: %s\n", playerNodeName(player), TrackTitle(track))
+	slog.Info("now playing", "node", playerNodeName(player), "track", TrackTitle(track))
 	return nil
 }
 
@@ -341,9 +341,9 @@ func (p *Player) failWithSearchRecovery(ctx context.Context, guildID snowflake.I
 	if p.recoverFailedTrackBySearch(ctx, guildID, failedTrack) {
 		return
 	}
-	fmt.Printf("[recovery] search recovery failed for %s, skipping track\n", TrackTitle(failedTrack))
+	slog.Warn("search recovery failed, skipping track", "track", TrackTitle(failedTrack))
 	if err := p.advanceAfterFailedTrack(ctx, guildID, failedTrack); err != nil {
-		fmt.Fprintf(os.Stderr, "[recovery] advance after failed track: %v\n", err)
+		slog.Error("advance after failed track during recovery", "err", err)
 	}
 }
 
@@ -370,20 +370,20 @@ func (p *Player) recoverFailedTrackBySearch(ctx context.Context, guildID snowfla
 		p.mu.Unlock()
 	}()
 
-	fmt.Printf("[recovery] searching for %s query=%q\n", TrackTitle(failedTrack), query)
+	slog.Debug("searching for recovery", "track", TrackTitle(failedTrack), "query", query)
 	loaded, err := loadPlayableTracks(ctx, p.node(), query)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[recovery] search failed: %v\n", err)
+		slog.Error("recovery search failed", "err", err)
 		return false
 	}
 	if len(loaded.Tracks) == 0 {
-		fmt.Fprintf(os.Stderr, "[recovery] search returned no tracks query=%q\n", query)
+		slog.Warn("recovery search returned no tracks", "query", query)
 		return false
 	}
 
 	recoveredTrack := loaded.Tracks[0]
 	if recoveredTrack.Encoded == failedTrack.Encoded {
-		fmt.Fprintf(os.Stderr, "[recovery] search returned the same failed track query=%q\n", query)
+		slog.Warn("recovery search returned same failed track", "query", query)
 		return false
 	}
 
@@ -402,7 +402,7 @@ func (p *Player) recoverFailedTrackBySearch(ctx context.Context, guildID snowfla
 	}
 
 	if err := p.playTrack(ctx, guildID, recoveredTrack); err != nil {
-		fmt.Fprintf(os.Stderr, "[recovery] play search result failed: %v\n", err)
+		slog.Error("recovery play search result failed", "err", err)
 		return false
 	}
 

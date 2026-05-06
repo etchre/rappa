@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -30,12 +30,12 @@ func handleShuffleAll(ctx commandrouter.Context, event *events.ApplicationComman
 	if snapshot.Current != nil {
 		embed := helpers.NowPlayingEmbed(*snapshot.Current, snapshot.Queued, snapshot.Position, snapshot.Volume, "")
 		if err := event.CreateMessage(discord.NewMessageCreate().WithContent(fmt.Sprintf("Shuffled current track with %d queued tracks.", count)).WithEmbeds(embed)); err != nil {
-			fmt.Fprintf(os.Stderr, "shuffle all response failed: %v\n", err)
+			slog.Error("shuffle all response failed", "err", err)
 		}
 		return
 	}
 
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(fmt.Sprintf("Shuffled current track with %d queued tracks.", count))); err != nil {
-		fmt.Fprintf(os.Stderr, "shuffle all response failed: %v\n", err)
+		slog.Error("shuffle all response failed", "err", err)
 	}
 }

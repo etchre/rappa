@@ -3,7 +3,7 @@ package music
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/disgoorg/disgolink/v3/lavalink"
 	"github.com/disgoorg/snowflake/v2"
@@ -36,7 +36,7 @@ func (p *Player) ShuffleAll(ctx context.Context, guildID snowflake.ID) (lavalink
 	}
 
 	current := *playback.current
-	nextIndex := rand.Intn(len(playback.queue))
+	nextIndex := rand.IntN(len(playback.queue))
 	next := playback.queue[nextIndex]
 
 	queue := append([]queuedTrack{}, playback.queue[:nextIndex]...)

@@ -3,7 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
-	"os"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -107,7 +107,7 @@ func (app *app) warmLavalink(ctx context.Context, node disgolink.Node) error {
 		return fmt.Errorf("warm lavalink node: %w", err)
 	}
 
-	fmt.Printf("Lavalink node %q is ready: version=%s plugins=%d\n", node.Config().Name, info.Version.Semver, len(info.Plugins))
+	slog.Info("lavalink node ready", "node", node.Config().Name, "version", info.Version.Semver, "plugins", len(info.Plugins))
 	return nil
 }
 
@@ -141,18 +141,18 @@ func (app *app) clearGuildCommands() {
 	cleared := 0
 	for guildID := range guildIDs {
 		if _, err := app.discord.Rest.SetGuildCommands(app.discord.ApplicationID, guildID, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "clear guild commands failed guild_id=%s: %v\n", guildID, err)
+			slog.Error("clear guild commands failed", "guild", guildID, "err", err)
 			continue
 		}
 		cleared++
 	}
 
-	fmt.Printf("Cleared guild commands for %d guild(s).\n", cleared)
+	slog.Info("cleared guild commands", "count", cleared)
 }
 
 func (app *app) warmDiscordRest() {
 	if _, err := app.discord.Rest.GetGatewayBot(); err != nil {
-		fmt.Fprintf(os.Stderr, "discord rest warmup failed: %v\n", err)
+		slog.Warn("discord rest warmup failed", "err", err)
 	}
 }
 
@@ -169,7 +169,7 @@ func (app *app) sendNowPlayingUpdate(ctx context.Context, guildID snowflake.ID) 
 
 	embed := helpers.NowPlayingEmbed(*snapshot.Current, snapshot.Queued, snapshot.Position, snapshot.Volume, "")
 	if _, err := app.discord.Rest.CreateMessage(channelID, discord.NewMessageCreate().WithEmbeds(embed)); err != nil {
-		fmt.Fprintf(os.Stderr, "now playing update failed: %v\n", err)
+		slog.Error("now playing update failed", "err", err)
 	}
 }
 
@@ -181,7 +181,7 @@ func (app *app) sendUnableToPlayUpdate(ctx context.Context, guildID snowflake.ID
 
 	embed := helpers.UnableToPlayEmbed(track)
 	if _, err := app.discord.Rest.CreateMessage(channelID, discord.NewMessageCreate().WithEmbeds(embed)); err != nil {
-		fmt.Fprintf(os.Stderr, "unable to play update failed: %v\n", err)
+		slog.Error("unable to play update failed", "err", err)
 	}
 }
 

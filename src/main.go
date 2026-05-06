@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -12,11 +12,11 @@ import (
 
 func main() {
 	if err := loadEnv(); err != nil {
-		fmt.Fprintln(os.Stderr, "warning: .env file not loaded")
+		slog.Warn(".env file not loaded")
 	}
 
 	if err := bot.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "bot failed: %v\n", err)
+		slog.Error("bot failed", "err", err)
 		os.Exit(1)
 	}
 }

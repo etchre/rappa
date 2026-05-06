@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,7 +37,7 @@ func Run() error {
 		return fmt.Errorf("open discord gateway: %w", err)
 	}
 
-	fmt.Println("Bot is ready. Use /play with a link. Press Ctrl+C to disconnect.")
+	slog.Info("Bot is ready. Use /play with a link. Press Ctrl+C to disconnect.")
 	waitForShutdown()
 
 	return nil

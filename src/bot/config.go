@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -98,7 +99,7 @@ func parseSnowflakeList(value string) []snowflake.ID {
 
 		id, err := snowflake.Parse(part)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ignoring invalid snowflake id %q: %v\n", part, err)
+			slog.Warn("ignoring invalid snowflake id", "id", part, "err", err)
 			continue
 		}
 		ids = append(ids, id)

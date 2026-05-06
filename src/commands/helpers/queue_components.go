@@ -2,7 +2,7 @@ package helpers
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -63,7 +63,7 @@ func handleQueuePageComponent(ctx commandrouter.Context, event *events.Component
 				ClearEmbeds().
 				WithComponents(),
 		); err != nil {
-			fmt.Fprintf(os.Stderr, "empty queue page update failed: %v\n", err)
+			slog.Error("empty queue page update failed", "err", err)
 		}
 		return
 	}
@@ -74,7 +74,7 @@ func handleQueuePageComponent(ctx commandrouter.Context, event *events.Component
 				ClearEmbeds().
 				WithComponents(),
 		); err != nil {
-			fmt.Fprintf(os.Stderr, "queue page text update failed: %v\n", err)
+			slog.Error("queue page text update failed", "err", err)
 		}
 		return
 	}
@@ -87,7 +87,7 @@ func handleQueuePageComponent(ctx commandrouter.Context, event *events.Component
 			WithEmbeds(QueueEmbed(*snapshot.Current, snapshot.Queued, page)).
 			WithComponents(components...),
 	); err != nil {
-		fmt.Fprintf(os.Stderr, "queue page update failed: %v\n", err)
+		slog.Error("queue page update failed", "err", err)
 	}
 }
 
@@ -97,6 +97,6 @@ func queueComponentID(page int) string {
 
 func respondComponentError(event *events.ComponentInteractionCreate, message string) {
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(message).WithEphemeral(true)); err != nil {
-		fmt.Fprintf(os.Stderr, "component error response failed: %v\n", err)
+		slog.Error("component error response failed", "err", err)
 	}
 }

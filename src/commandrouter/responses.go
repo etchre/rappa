@@ -1,8 +1,7 @@
 package commandrouter
 
 import (
-	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -10,7 +9,7 @@ import (
 
 func RespondError(event *events.ApplicationCommandInteractionCreate, message string) {
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(message)); err != nil {
-		fmt.Fprintf(os.Stderr, "command error response failed: %v\n", err)
+		slog.Error("command error response failed", "err", err)
 	}
 }
 
@@ -20,7 +19,7 @@ func UpdateResponse(event *events.ApplicationCommandInteractionCreate, message s
 		event.Token(),
 		discord.NewMessageUpdate().WithContent(message),
 	); err != nil {
-		fmt.Fprintf(os.Stderr, "update command response failed: %v\n", err)
+		slog.Error("update command response failed", "err", err)
 	}
 }
 
@@ -34,6 +33,6 @@ func UpdateResponseContentEmbed(event *events.ApplicationCommandInteractionCreat
 		event.Token(),
 		discord.NewMessageUpdate().WithContent(content).WithEmbeds(embed),
 	); err != nil {
-		fmt.Fprintf(os.Stderr, "update command embed response failed: %v\n", err)
+		slog.Error("update command embed response failed", "err", err)
 	}
 }

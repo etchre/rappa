@@ -1,8 +1,7 @@
 package commands
 
 import (
-	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -27,7 +26,7 @@ func handleQueue(ctx commandrouter.Context, event *events.ApplicationCommandInte
 	}
 	if snapshot.Current == nil {
 		if err := event.CreateMessage(discord.NewMessageCreate().WithContent(helpers.FormatQueue(nil, snapshot.Queued))); err != nil {
-			fmt.Fprintf(os.Stderr, "queue response failed: %v\n", err)
+			slog.Error("queue response failed", "err", err)
 		}
 		return
 	}
@@ -39,6 +38,6 @@ func handleQueue(ctx commandrouter.Context, event *events.ApplicationCommandInte
 	}
 
 	if err := event.CreateMessage(message); err != nil {
-		fmt.Fprintf(os.Stderr, "queue response failed: %v\n", err)
+		slog.Error("queue response failed", "err", err)
 	}
 }

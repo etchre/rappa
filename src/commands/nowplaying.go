@@ -1,8 +1,7 @@
 package commands
 
 import (
-	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -28,6 +27,6 @@ func handleNowPlaying(ctx commandrouter.Context, event *events.ApplicationComman
 
 	embed := helpers.NowPlayingEmbed(*snapshot.Current, nil, snapshot.Position, snapshot.Volume, "")
 	if err := event.CreateMessage(discord.NewMessageCreate().WithEmbeds(embed)); err != nil {
-		fmt.Fprintf(os.Stderr, "now playing response failed: %v\n", err)
+		slog.Error("now playing response failed", "err", err)
 	}
 }

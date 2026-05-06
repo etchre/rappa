@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -28,6 +28,6 @@ func handleSetChannel(ctx commandrouter.Context, event *events.ApplicationComman
 	ctx.StatusChannels.Set(ctx.GuildID, channelID)
 
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(fmt.Sprintf("Automatic now playing updates will post in <#%s>.", channelID))); err != nil {
-		fmt.Fprintf(os.Stderr, "set channel response failed: %v\n", err)
+		slog.Error("set channel response failed", "err", err)
 	}
 }

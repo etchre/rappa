@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -30,6 +30,6 @@ func handleShuffle(ctx commandrouter.Context, event *events.ApplicationCommandIn
 	}
 
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(fmt.Sprintf("Shuffled %d queued tracks.", count))); err != nil {
-		fmt.Fprintf(os.Stderr, "shuffle response failed: %v\n", err)
+		slog.Error("shuffle response failed", "err", err)
 	}
 }

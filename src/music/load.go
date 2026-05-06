@@ -3,6 +3,7 @@ package music
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/exec"
@@ -77,18 +78,18 @@ func loadWithProbe(ctx context.Context, node disgolink.Node, identifier string) 
 		return probedLoad{playableLoad: loaded}, err
 	}
 
-	fmt.Printf("[probe] probing %s\n", identifier)
+	slog.Debug("probing track", "id", identifier)
 	result, err := probeIdentifier(ctx, identifier)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[probe] yt-dlp probe error for %s: %v\n", identifier, err)
+		slog.Error("yt-dlp probe failed", "id", identifier, "err", err)
 	}
 
 	switch result {
 	case probeResultPremium:
-		fmt.Printf("[probe] %s -> premium, loading metadata via lavalink\n", identifier)
+		slog.Debug("probe result: premium, loading metadata", "id", identifier)
 		metaLoaded, metaErr := loadPlayableTracks(ctx, node, identifier)
 
-		fmt.Printf("[probe] %s -> loading stream via premium plugin\n", identifier)
+		slog.Debug("loading via premium plugin", "id", identifier)
 		loaded, err := loadPlayableTracks(ctx, node, premiumPlayableIdentifier(identifier))
 		if err != nil {
 			return probedLoad{}, err
@@ -99,24 +100,24 @@ func loadWithProbe(ctx context.Context, node disgolink.Node, identifier string) 
 			for i := range loaded.Tracks {
 				loaded.Tracks[i].Info = metaLoaded.Tracks[0].Info
 			}
-			fmt.Printf("[probe] copied metadata: %s\n", TrackTitle(loaded.Tracks[0]))
+			slog.Debug("copied metadata to premium track", "track", TrackTitle(loaded.Tracks[0]))
 		}
 
 		return probedLoad{playableLoad: loaded, UsedPremiumRoute: true}, nil
 
 	case probeResultUnavailable:
-		fmt.Printf("[probe] %s -> unavailable, trying resolver\n", identifier)
+		slog.Debug("probe result: unavailable, trying resolver", "id", identifier)
 		resolved := resolvedYouTubeIdentifier(ctx, identifier)
 		if resolved == identifier {
-			fmt.Fprintf(os.Stderr, "[probe] resolver returned same unavailable identifier %s\n", identifier)
+			slog.Warn("resolver returned same identifier", "id", identifier)
 			return probedLoad{}, fmt.Errorf("resolver returned same unavailable identifier %q", identifier)
 		}
-		fmt.Printf("[probe] resolved %s -> %s, loading via lavalink\n", identifier, resolved)
+		slog.Debug("resolved, loading via lavalink", "id", identifier, "resolved", resolved)
 		loaded, err := loadPlayableTracks(ctx, node, resolved)
 		return probedLoad{playableLoad: loaded}, err
 
 	default:
-		fmt.Printf("[probe] %s -> available, loading via lavalink\n", identifier)
+		slog.Debug("probe result: available, loading", "id", identifier)
 		loaded, err := loadPlayableTracks(ctx, node, identifier)
 		return probedLoad{playableLoad: loaded}, err
 	}
@@ -225,7 +226,7 @@ func resolvedYouTubeIdentifier(ctx context.Context, input string) string {
 
 	resolvedID, err := resolveYouTubeVideoID(ctx, videoID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "youtube music id resolver failed for %s: %v\n", videoID, err)
+		slog.Error("youtube music id resolver failed", "id", videoID, "err", err)
 		return input
 	}
 	if resolvedID == "" {
@@ -434,7 +435,7 @@ func resolvedTrackIdentifier(ctx context.Context, track lavalink.Track) string {
 		if isYouTubeVideoID(candidate) {
 			resolvedID, err := resolveYouTubeVideoID(ctx, candidate)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "youtube music id resolver failed for %s: %v\n", candidate, err)
+				slog.Error("youtube music id resolver failed", "id", candidate, "err", err)
 				return YouTubeMusicTrackURL(candidate)
 			}
 			return YouTubeMusicTrackURL(resolvedID)

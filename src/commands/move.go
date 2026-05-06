@@ -7,7 +7,6 @@ import (
 	"github.com/disgoorg/disgo/events"
 
 	"rappa/commandrouter"
-	"rappa/commands/helpers"
 	"rappa/music"
 )
 

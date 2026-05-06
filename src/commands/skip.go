@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -32,7 +32,7 @@ func handleSkip(ctx commandrouter.Context, event *events.ApplicationCommandInter
 		if snapshot.Current != nil {
 			embed := helpers.NowPlayingEmbed(*snapshot.Current, nil, snapshot.Position, snapshot.Volume, "")
 			if err := event.CreateMessage(discord.NewMessageCreate().WithContent("Skipped!").WithEmbeds(embed)); err != nil {
-				fmt.Fprintf(os.Stderr, "skip response failed: %v\n", err)
+				slog.Error("skip response failed", "err", err)
 			}
 			return
 		}

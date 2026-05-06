@@ -2,8 +2,7 @@ package bot
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"log/slog"
 	"time"
 
 	"github.com/disgoorg/disgo/events"
@@ -54,10 +53,10 @@ func (app *app) onGuildReady(_ context.Context) func(event *events.GuildReady) {
 		}
 
 		if _, err := app.discord.Rest.SetGuildCommands(app.discord.ApplicationID, event.GuildID, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "clear guild commands failed guild_id=%s: %v\n", event.GuildID, err)
+			slog.Error("clear guild commands failed", "guild", event.GuildID, "err", err)
 			return
 		}
-		fmt.Printf("Cleared guild commands for guild_id=%s.\n", event.GuildID)
+		slog.Info("cleared guild commands", "guild", event.GuildID)
 	}
 }
 

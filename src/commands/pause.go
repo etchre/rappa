@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -30,6 +30,6 @@ func handlePause(ctx commandrouter.Context, event *events.ApplicationCommandInte
 		content = "Resumed playback."
 	}
 	if err := event.CreateMessage(discord.NewMessageCreate().WithContent(content)); err != nil {
-		fmt.Fprintf(os.Stderr, "pause response failed: %v\n", err)
+		slog.Error("pause response failed", "err", err)
 	}
 }

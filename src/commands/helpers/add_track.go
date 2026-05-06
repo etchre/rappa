@@ -2,7 +2,7 @@ package helpers
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 	"time"
 
 	"github.com/disgoorg/disgo/discord"
@@ -44,7 +44,7 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 	}
 
 	if err := event.DeferCreateMessage(false); err != nil {
-		fmt.Fprintf(os.Stderr, "defer add track response failed: %v\n", err)
+		slog.Error("defer add track response failed", "err", err)
 		return
 	}
 

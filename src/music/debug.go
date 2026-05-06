@@ -1,7 +1,7 @@
 package music
 
 import (
-	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/disgoorg/disgolink/v3/disgolink"
@@ -9,65 +9,65 @@ import (
 )
 
 func debugTrackLoad(node disgolink.Node, originalIdentifier string, playableIdentifier string) {
-	fmt.Printf(
-		"[lavalink-debug] loading track on node=%q input=%q resolved_identifier=%q\n",
-		nodeName(node),
-		originalIdentifier,
-		playableIdentifier,
+	slog.Debug("loading track",
+		"node", nodeName(node),
+		"input", originalIdentifier,
+		"resolved", playableIdentifier,
 	)
 }
 
 func debugTrackLoadError(node disgolink.Node, originalIdentifier string, playableIdentifier string, err error) {
-	fmt.Printf(
-		"[lavalink-debug] load request failed node=%q input=%q resolved_identifier=%q error=%v\n",
-		nodeName(node),
-		originalIdentifier,
-		playableIdentifier,
-		err,
+	slog.Debug("load request failed",
+		"node", nodeName(node),
+		"input", originalIdentifier,
+		"resolved", playableIdentifier,
+		"err", err,
 	)
 	if looksAccountGated(err.Error()) {
-		fmt.Printf(
-			"[lavalink-debug] likely account/premium-gated track input=%q resolved_identifier=%q\n",
-			originalIdentifier,
-			playableIdentifier,
+		slog.Debug("likely account/premium-gated track",
+			"input", originalIdentifier,
+			"resolved", playableIdentifier,
 		)
 	}
 }
 
 func debugTrackLoadEmpty(node disgolink.Node, originalIdentifier string, playableIdentifier string) {
-	fmt.Printf(
-		"[lavalink-debug] no tracks found node=%q input=%q resolved_identifier=%q\n",
-		nodeName(node),
-		originalIdentifier,
-		playableIdentifier,
+	slog.Debug("no tracks found",
+		"node", nodeName(node),
+		"input", originalIdentifier,
+		"resolved", playableIdentifier,
 	)
 }
 
 func debugTrackPlayError(player disgolink.Player, track lavalink.Track, err error) {
-	fmt.Printf(
-		"[lavalink-debug] play update failed node=%q track=%q error=%v\n",
-		playerNodeName(player),
-		TrackTitle(track),
-		err,
+	slog.Debug("play update failed",
+		"node", playerNodeName(player),
+		"track", TrackTitle(track),
+		"err", err,
 	)
 	if looksAccountGated(err.Error()) {
-		fmt.Printf("[lavalink-debug] likely account/premium-gated track track=%q\n", TrackTitle(track))
+		slog.Debug("likely account/premium-gated track",
+			"track", TrackTitle(track),
+		)
 	}
 }
 
 func debugLavalinkException(stage string, nodeName string, subject string, exception lavalink.Exception) {
 	if looksAccountGated(exception.Message, exception.Cause, exception.CauseStackTrace) {
-		fmt.Printf("[lavalink-debug] %s failed on node=%q, likely a premium track: %s\n", stage, nodeName, subject)
+		slog.Debug("lavalink exception, likely premium track",
+			"stage", stage,
+			"node", nodeName,
+			"subject", subject,
+		)
 		return
 	}
 
-	fmt.Printf(
-		"[lavalink-debug] %s failed on node=%q subject=%q severity=%q message=%q\n",
-		stage,
-		nodeName,
-		subject,
-		exception.Severity,
-		exception.Message,
+	slog.Warn("lavalink exception",
+		"stage", stage,
+		"node", nodeName,
+		"subject", subject,
+		"severity", exception.Severity,
+		"message", exception.Message,
 	)
 }
 
