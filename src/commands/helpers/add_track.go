@@ -48,28 +48,43 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		return
 	}
 
-	voiceChannelID, err := commandrouter.CallerVoiceChannelID(event)
-	if err != nil {
+	if err := prepareVoiceForPlayback(ctx, event); err != nil {
 		commandrouter.UpdateResponse(event, err.Error())
 		return
+	}
+
+	result, err := addTrackByMode(ctx, link, mode, addOptionsFromEvent(ctx, event))
+	if err != nil {
+		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to play link: %v", err))
+		return
+	}
+
+	respondAddTrackResult(ctx, event, result)
+}
+
+func prepareVoiceForPlayback(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) error {
+	voiceChannelID, err := commandrouter.CallerVoiceChannelID(event)
+	if err != nil {
+		return err
 	}
 	ctx.NoteVoiceState(event.User().ID, voiceChannelID)
 
 	if err := event.Client().UpdateVoiceState(ctx.Context, ctx.GuildID, &voiceChannelID, false, true); err != nil {
-		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to join voice: %v", err))
-		return
+		return fmt.Errorf("Failed to join voice: %v", err)
 	}
 	if ctx.StatusChannels != nil {
 		ctx.StatusChannels.SetFallbackIfUnset(ctx.GuildID, event.Channel().ID())
 	}
 
 	if err := ctx.Player.WaitUntilVoiceReady(ctx.Context, ctx.GuildID, 10*time.Second); err != nil {
-		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to connect voice to Lavalink: %v", err))
-		return
+		return fmt.Errorf("Failed to connect voice to Lavalink: %v", err)
 	}
 
-	var result music.QueueResult
-	options := music.AddOptions{
+	return nil
+}
+
+func addOptionsFromEvent(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate) music.AddOptions {
+	return music.AddOptions{
 		PremiumFallbackAllowed: ctx.PremiumFallbackAllowed(event.User().ID),
 		RequesterName:          requesterName(event),
 		RequesterID:            event.User().ID.String(),
@@ -77,19 +92,20 @@ func HandleAddTrack(ctx commandrouter.Context, event *events.ApplicationCommandI
 		Shuffle:                PlayShuffle(event.SlashCommandInteractionData()),
 		Limit:                  PlayLimit(event.SlashCommandInteractionData()),
 	}
+}
+
+func addTrackByMode(ctx commandrouter.Context, link string, mode AddMode, options music.AddOptions) (music.QueueResult, error) {
 	switch mode {
 	case PlayNow:
-		result, err = ctx.Player.PlayNow(ctx.Context, ctx.GuildID, link, options)
+		return ctx.Player.PlayNow(ctx.Context, ctx.GuildID, link, options)
 	case AddNext:
-		result, err = ctx.Player.AddNext(ctx.Context, ctx.GuildID, link, options)
+		return ctx.Player.AddNext(ctx.Context, ctx.GuildID, link, options)
 	default:
-		result, err = ctx.Player.Add(ctx.Context, ctx.GuildID, link, options)
+		return ctx.Player.Add(ctx.Context, ctx.GuildID, link, options)
 	}
-	if err != nil {
-		commandrouter.UpdateResponse(event, fmt.Sprintf("Failed to play link: %v", err))
-		return
-	}
+}
 
+func respondAddTrackResult(ctx commandrouter.Context, event *events.ApplicationCommandInteractionCreate, result music.QueueResult) {
 	title := music.TrackTitle(result.Track)
 	if result.Queued {
 		content, embed := QueuedEmbed(result, event.User().Mention())
