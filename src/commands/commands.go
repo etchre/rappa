@@ -36,6 +36,7 @@ func All(includeJokes bool) map[string]commandrouter.Command {
 		commands["africa"] = Africa
 		commands["diddy"] = Diddy
 		commands["e"] = E
+		commands["jermaine"] = Jermaine
 		commands["june"] = June
 		commands["mae"] = Mae
 		commands["yolk"] = Yolk

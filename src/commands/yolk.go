@@ -16,6 +16,8 @@ import (
 
 var yolkURLs = []string{
 	"https://youtu.be/-arkKErUdLs?si=vQtWUsZUaiX_o9Cs", // ethan
+	"https://www.youtube.com/watch?v=T-tUWV0HxAQ", // mae
+	"https://www.youtube.com/watch?v=n8X9_MgEdCg", // jermaine
 }
 
 var Yolk = commandrouter.Command{
